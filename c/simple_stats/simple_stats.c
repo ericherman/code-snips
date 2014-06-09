@@ -3,12 +3,13 @@
 #include "simple_stats.h"
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 
 void simple_stats_t_init(simple_stats_t *stats)
 {
 	stats->cnt = 0;
-	stats->min = 0.0;
-	stats->max = 0.0;
+	stats->min = DBL_MAX;
+	stats->max = -DBL_MAX;
 	stats->sum = 0.0;
 	stats->sum_of_squares = 0.0;
 }
