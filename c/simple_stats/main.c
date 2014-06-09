@@ -47,7 +47,7 @@ void _lex_col_val(char *line_buf, size_t * lex_pos, char *val_buf)
 		}
 	}
 	strncpy(val_buf, line_buf + *lex_pos, len);
-	val_buf[len] = '\0';
+	val_buf[(!done || !len) ? len : len - 1] = '\0';
 	*lex_pos += len;
 }
 
@@ -61,7 +61,7 @@ void _run(ss_options_t * options)
 	unsigned int rows_skipped = 0;
 	unsigned int cols_skipped = 0;
 	unsigned int columns = options->channels + options->skip_cols;
-	long channel;
+	unsigned int channel;
 	unsigned int lex_pos = 0;
 	size_t i;
 	double d;
