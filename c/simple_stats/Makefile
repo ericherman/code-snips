@@ -28,4 +28,4 @@ clean:
 
 check:
 	cat ./data.txt
-	./sstats --file=./data.txt --skip_cols=1 --channels=4
+	./sstats --file=./data.txt --skip_rows=1 --skip_cols=1 --channels=4
