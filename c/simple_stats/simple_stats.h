@@ -4,6 +4,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct simple_stats_t_ {
 	unsigned int cnt;
 	double min;
@@ -21,5 +25,9 @@ double simple_stats_t_variance(simple_stats_t *stats);
 double simple_stats_t_std_dev(simple_stats_t *stats);
 
 void simple_stats_t_to_string(simple_stats_t *stats, char *buf, size_t buflen);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SIMPLE_STATS_H_ */
