@@ -14,17 +14,20 @@ int main(void)
 	int num_elements = 7;
 	int array[num_elements];
 	int element_max_value = 10;
-	sort_func_t sort_funcs[2];
+	sort_func_t sort_funcs[3];
 	int i, j, last;
 	int sorted = 1;
 
 	sort_funcs[0].name = "qsort";
 	sort_funcs[0].sort_func = qsort_ints;
 
-	sort_funcs[1].name = "sleep_sort";
-	sort_funcs[1].sort_func = sleep_sort;
+	sort_funcs[1].name = "random_sort";
+	sort_funcs[1].sort_func = random_sort;
 
-	for (j = 0; j < 2; j++) {
+	sort_funcs[2].name = "sleep_sort";
+	sort_funcs[2].sort_func = sleep_sort;
+
+	for (j = 0; j < 3; j++) {
 		printf("%20s: { ", "un-sorted");
 		for (i = 0; i < num_elements; i++) {
 			array[i] = rand() % element_max_value;

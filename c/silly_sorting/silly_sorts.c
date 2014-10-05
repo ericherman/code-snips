@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <limits.h>
 
 typedef struct int_list_t_ {
 	struct int_list_t_ *next_node;
@@ -114,4 +115,36 @@ void sleep_sort(int *elements, size_t num_elements)
 	}
 	free(int_list);
 	rv = pthread_mutex_destroy(&mutex);
+}
+
+void shuffle(int *elements, size_t num_elements)
+{
+	size_t i, pos;
+	int swap;
+	for (i = 0; i < num_elements; i++) {
+		pos = rand() % num_elements;
+		swap = elements[i];
+		elements[i] = elements[pos];
+		elements[pos] = swap;
+	}
+}
+
+void random_sort(int *elements, size_t num_elements)
+{
+	size_t i;
+	int last;
+	int sorted = 0;
+
+	while (!sorted) {
+		shuffle(elements, num_elements);
+		sorted = 1;
+		last = INT_MIN;
+		for (i = 0; i < num_elements; i++) {
+			if (elements[i] < last) {
+				sorted = 0;
+			}
+			last = elements[i];
+		}
+	}
+
 }
