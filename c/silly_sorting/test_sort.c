@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "qsort_ints.h"
 #include "silly_sorts.h"
@@ -13,6 +14,7 @@ int main(void)
 {
 	int num_elements = 7;
 	int array[num_elements];
+	int vals[num_elements];
 	int element_max_value = 10;
 	sort_func_t sort_funcs[3];
 	int i, j, last;
@@ -27,22 +29,26 @@ int main(void)
 	sort_funcs[2].name = "sleep_sort";
 	sort_funcs[2].sort_func = sleep_sort;
 
+	printf("%20s: { ", "un-sorted");
+	for (i = 0; i < num_elements; i++) {
+		vals[i] = rand() % element_max_value;
+		printf("%d, ", vals[i]);
+	}
+	printf("}\n");
+
 	for (j = 0; j < 3; j++) {
-		printf("%20s: { ", "un-sorted");
-		for (i = 0; i < num_elements; i++) {
-			array[i] = rand() % element_max_value;
-			printf("%d, ", array[i]);
-		}
-		printf("}\n");
+		memcpy(array, vals, num_elements * sizeof(int));
+
+		printf("%13s sorted: { ", sort_funcs[j].name);
 
 		sort_funcs[j].sort_func(array, num_elements);
 
 		last = array[0];
-		printf("%13s sorted: { ", sort_funcs[j].name);
 		for (i = 0; i < num_elements; i++) {
 			if (array[i] < last) {
 				sorted = 0;
 			}
+			last = array[i];
 			printf("%d, ", array[i]);
 		}
 		printf("}\n");
