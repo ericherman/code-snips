@@ -19,6 +19,7 @@ typedef struct pthread_push_val_context_t_ {
 	int_list_head_t *head;
 	pthread_mutex_t *mutex;
 	int val;
+	unsigned int sleep_time;
 } pthread_push_val_context_t;
 
 void *pthread_push_val(void *arg)
@@ -31,7 +32,7 @@ void *pthread_push_val(void *arg)
 
 	head = ctx->head;
 
-	sleep(ctx->val);
+	sleep(ctx->sleep_time);
 
 	pthread_mutex_lock(ctx->mutex);
 	if (head->first_node == NULL) {
@@ -91,12 +92,13 @@ void sleep_sort(int *elements, size_t num_elements)
 		    malloc(sizeof(pthread_push_val_context_t));
 		ctx->mutex = &mutex;
 
+		ctx->val = elements[i];
 		if (elements[i] >= 0) {
 			ctx->head = pos_list;
-			ctx->val = elements[i];
+			ctx->sleep_time = elements[i];
 		} else {
 			ctx->head = neg_list;
-			ctx->val = -1 * elements[i];
+			ctx->sleep_time = -1 * elements[i];
 		}
 
 		rv = pthread_create(&(threads[i]), NULL, pthread_push_val, ctx);
@@ -116,7 +118,6 @@ void sleep_sort(int *elements, size_t num_elements)
 
 	while (neg_list->first_node) {
 		node = neg_list->first_node;
-		node->val *= -1;
 		neg_list->first_node = node->next_node;
 		if (pos_list->first_node) {
 			node->next_node = pos_list->first_node;
