@@ -64,16 +64,21 @@ void sleep_sort(int *elements, size_t num_elements)
 	int rv;
 	pthread_push_val_context_t *ctx;
 	pthread_t threads[num_elements];
-	int_list_head_t *int_list;
+	int_list_head_t *pos_list, *neg_list;
 	int_list_t *node;
 	pthread_mutex_t mutex;
 	const pthread_mutexattr_t *attr = NULL;
 
-	int_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
-	if (!int_list) {
+	pos_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
+	if (!pos_list) {
 		exit(EXIT_FAILURE);
 	}
-	int_list->first_node = NULL;
+	pos_list->first_node = NULL;
+	neg_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
+	if (!neg_list) {
+		exit(EXIT_FAILURE);
+	}
+	neg_list->first_node = NULL;
 
 	rv = pthread_mutex_init(&mutex, attr);
 	if (rv) {
@@ -85,8 +90,14 @@ void sleep_sort(int *elements, size_t num_elements)
 		ctx = (pthread_push_val_context_t *)
 		    malloc(sizeof(pthread_push_val_context_t));
 		ctx->mutex = &mutex;
-		ctx->head = int_list;
-		ctx->val = elements[i];
+
+		if (elements[i] >= 0) {
+			ctx->head = pos_list;
+			ctx->val = elements[i];
+		} else {
+			ctx->head = neg_list;
+			ctx->val = -1 * elements[i];
+		}
 
 		rv = pthread_create(&(threads[i]), NULL, pthread_push_val, ctx);
 		if (rv) {
@@ -98,23 +109,39 @@ void sleep_sort(int *elements, size_t num_elements)
 	for (i = 0; i < num_elements; i++) {
 		pthread_join(threads[i], NULL);
 	}
+	rv = pthread_mutex_destroy(&mutex);
+	if (rv) {
+		fprintf(stderr, "pthread_mutex_destroy() returned: %d\n", rv);
+	}
 
-	if (int_list->first_node) {
-		node = int_list->first_node;
+	while (neg_list->first_node) {
+		node = neg_list->first_node;
+		node->val *= -1;
+		neg_list->first_node = node->next_node;
+		if (pos_list->first_node) {
+			node->next_node = pos_list->first_node;
+		} else {
+			node->next_node = NULL;
+		}
+		pos_list->first_node = node;
+	}
+	free(neg_list);
+
+	if (pos_list->first_node) {
+		node = pos_list->first_node;
 		for (i = 0; i < num_elements; i++) {
 			elements[i] = node->val;
 			node = node->next_node;
 		}
 
-		while (int_list->first_node->next_node) {
-			node = int_list->first_node->next_node;
-			int_list->first_node->next_node = node->next_node;
+		while (pos_list->first_node->next_node) {
+			node = pos_list->first_node->next_node;
+			pos_list->first_node->next_node = node->next_node;
 			free(node);
 		}
-		free(int_list->first_node);
+		free(pos_list->first_node);
 	}
-	free(int_list);
-	rv = pthread_mutex_destroy(&mutex);
+	free(pos_list);
 }
 
 void shuffle(int *elements, size_t num_elements)

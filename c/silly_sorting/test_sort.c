@@ -17,7 +17,7 @@ int main(void)
 	int vals[num_elements];
 	int element_max_value = 10;
 	sort_func_t sort_funcs[3];
-	int i, j, last;
+	int i, j, last, negate;
 	int sorted = 1;
 
 	sort_funcs[0].name = "qsort";
@@ -31,7 +31,11 @@ int main(void)
 
 	printf("%20s: { ", "un-sorted");
 	for (i = 0; i < num_elements; i++) {
+		negate = rand() % 3;
 		vals[i] = rand() % element_max_value;
+		if (negate == 1) {
+			vals[i] *= -1;
+		}
 		printf("%d, ", vals[i]);
 	}
 	printf("}\n");
