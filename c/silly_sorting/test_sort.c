@@ -12,11 +12,12 @@ typedef struct sort_func_t_ {
 
 int main(void)
 {
-	int num_elements = 7;
+	int num_funcs = 4;
+	int num_elements = 4;
 	int array[num_elements];
 	int vals[num_elements];
 	int element_max_value = 10;
-	sort_func_t sort_funcs[3];
+	sort_func_t sort_funcs[num_funcs];
 	int i, j, last, negate;
 	int sorted = 1;
 
@@ -29,7 +30,10 @@ int main(void)
 	sort_funcs[2].name = "sleep_sort";
 	sort_funcs[2].sort_func = sleep_sort;
 
-	printf("%20s: { ", "un-sorted");
+	sort_funcs[3].name = "random_sleep_sort";
+	sort_funcs[3].sort_func = random_sleep_sort;
+
+	printf("%25s: { ", "un-sorted");
 	for (i = 0; i < num_elements; i++) {
 		negate = rand() % 3;
 		vals[i] = rand() % element_max_value;
@@ -40,10 +44,10 @@ int main(void)
 	}
 	printf("}\n");
 
-	for (j = 0; j < 3; j++) {
+	for (j = 0; j < num_funcs; j++) {
 		memcpy(array, vals, num_elements * sizeof(int));
 
-		printf("%13s sorted: { ", sort_funcs[j].name);
+		printf("%18s sorted: { ", sort_funcs[j].name);
 
 		sort_funcs[j].sort_func(array, num_elements);
 

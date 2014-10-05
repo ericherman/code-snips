@@ -59,7 +59,7 @@ void *pthread_push_val(void *arg)
 	return NULL;
 }
 
-void sleep_sort(int *elements, size_t num_elements)
+void _sleep_sort(int funky, int *elements, size_t num_elements)
 {
 	size_t i;
 	int rv;
@@ -93,11 +93,16 @@ void sleep_sort(int *elements, size_t num_elements)
 		ctx->mutex = &mutex;
 
 		ctx->val = elements[i];
-		if (elements[i] >= 0) {
+		if (funky || elements[i] >= 0) {
 			ctx->head = pos_list;
-			ctx->sleep_time = elements[i];
 		} else {
 			ctx->head = neg_list;
+		}
+		if (funky) {
+			ctx->sleep_time = rand() % num_elements;
+		} else if (elements[i] >= 0) {
+			ctx->sleep_time = elements[i];
+		} else {
 			ctx->sleep_time = -1 * elements[i];
 		}
 
@@ -145,6 +150,16 @@ void sleep_sort(int *elements, size_t num_elements)
 	free(pos_list);
 }
 
+void sleep_sort(int *elements, size_t num_elements)
+{
+	_sleep_sort(0, elements, num_elements);
+}
+
+void sleep_shuffle(int *elements, size_t num_elements)
+{
+	_sleep_sort(1, elements, num_elements);
+}
+
 void shuffle(int *elements, size_t num_elements)
 {
 	size_t i, pos;
@@ -157,14 +172,18 @@ void shuffle(int *elements, size_t num_elements)
 	}
 }
 
-void random_sort(int *elements, size_t num_elements)
+void _random_sort(int funky, int *elements, size_t num_elements)
 {
 	size_t i;
 	int last;
 	int sorted = 0;
 
 	while (!sorted) {
-		shuffle(elements, num_elements);
+		if (funky) {
+			sleep_shuffle(elements, num_elements);
+		} else {
+			shuffle(elements, num_elements);
+		}
 		sorted = 1;
 		last = INT_MIN;
 		for (i = 0; i < num_elements; i++) {
@@ -175,4 +194,14 @@ void random_sort(int *elements, size_t num_elements)
 		}
 	}
 
+}
+
+void random_sort(int *elements, size_t num_elements)
+{
+	_random_sort(0, elements, num_elements);
+}
+
+void random_sleep_sort(int *elements, size_t num_elements)
+{
+	_random_sort(1, elements, num_elements);
 }
