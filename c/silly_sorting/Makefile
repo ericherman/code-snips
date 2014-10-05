@@ -1,7 +1,7 @@
 #
 
 EXECUTABLE=test-sorts
-SOURCES=test_sort.c qsort_ints.c
+SOURCES=test_sort.c qsort_ints.c silly_sorts.c
 
 CC=gcc
 STD_CFLAGS=--std=c99
@@ -10,7 +10,7 @@ OPTIMIZER_CFLAGS=-ggdb -O0
 
 CFLAGS=$(STD_CFLAGS) $(OPTIMIZER_CFLAGS) $(NOISY_CFLAGS)
 
-LDFLAGS=
+LDFLAGS=-pthread
 
 OBJECTS=$(SOURCES:.c=.o)
 
@@ -25,5 +25,5 @@ $(EXECUTABLE): $(OBJECTS)
 clean:
 	rm -rf *.o $(EXECUTABLE)
 
-check:
+check: all
 	./$(EXECUTABLE)
