@@ -172,18 +172,15 @@ void shuffle(int *elements, size_t num_elements)
 	}
 }
 
-void _random_sort(int funky, int *elements, size_t num_elements)
+void _random_sort(void (shuffle_func) (int *elements, size_t num_elements),
+		  int *elements, size_t num_elements)
 {
 	size_t i;
 	int last;
 	int sorted = 0;
 
 	while (!sorted) {
-		if (funky) {
-			sleep_shuffle(elements, num_elements);
-		} else {
-			shuffle(elements, num_elements);
-		}
+		shuffle_func(elements, num_elements);
 		sorted = 1;
 		last = INT_MIN;
 		for (i = 0; i < num_elements; i++) {
@@ -198,10 +195,10 @@ void _random_sort(int funky, int *elements, size_t num_elements)
 
 void random_sort(int *elements, size_t num_elements)
 {
-	_random_sort(0, elements, num_elements);
+	_random_sort(shuffle, elements, num_elements);
 }
 
 void random_sleep_sort(int *elements, size_t num_elements)
 {
-	_random_sort(1, elements, num_elements);
+	_random_sort(sleep_shuffle, elements, num_elements);
 }
