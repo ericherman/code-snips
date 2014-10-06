@@ -59,7 +59,9 @@ void *pthread_push_val(void *arg)
 	return NULL;
 }
 
-void _sleep_sort(int funky, int *elements, size_t num_elements)
+enum reorder { SORT, SHUFFLE };
+
+void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 {
 	size_t i;
 	int rv;
@@ -93,17 +95,21 @@ void _sleep_sort(int funky, int *elements, size_t num_elements)
 		ctx->mutex = &mutex;
 
 		ctx->val = elements[i];
-		if (funky || elements[i] >= 0) {
+
+		switch (order) {
+		case SHUFFLE:
 			ctx->head = pos_list;
-		} else {
-			ctx->head = neg_list;
-		}
-		if (funky) {
 			ctx->sleep_time = rand() % num_elements;
-		} else if (elements[i] >= 0) {
-			ctx->sleep_time = elements[i];
-		} else {
-			ctx->sleep_time = -1 * elements[i];
+			break;
+		case SORT:
+			if (elements[i] >= 0) {
+				ctx->head = pos_list;
+				ctx->sleep_time = elements[i];
+			} else {
+				ctx->head = neg_list;
+				ctx->sleep_time = -1 * elements[i];
+			}
+			break;
 		}
 
 		rv = pthread_create(&(threads[i]), NULL, pthread_push_val, ctx);
@@ -152,12 +158,12 @@ void _sleep_sort(int funky, int *elements, size_t num_elements)
 
 void sleep_sort(int *elements, size_t num_elements)
 {
-	_sleep_sort(0, elements, num_elements);
+	_sleep_reorder(SORT, elements, num_elements);
 }
 
 void sleep_shuffle(int *elements, size_t num_elements)
 {
-	_sleep_sort(1, elements, num_elements);
+	_sleep_reorder(SHUFFLE, elements, num_elements);
 }
 
 void shuffle(int *elements, size_t num_elements)
