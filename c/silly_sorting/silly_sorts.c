@@ -17,20 +17,20 @@ typedef struct int_list_head_t_ {
 	int_list_t *first_node;
 } int_list_head_t;
 
-typedef struct pthread_push_val_context_t_ {
+typedef struct pthread_push_context_t_ {
 	int_list_head_t *head;
 	pthread_mutex_t *mutex;
 	int val;
 	unsigned int sleep_time;
-} pthread_push_val_context_t;
+} pthread_push_context_t;
 
-void *pthread_push_val(void *arg)
+void *_pthread_push(void *arg)
 {
-	pthread_push_val_context_t *ctx;
+	pthread_push_context_t *ctx;
 	int_list_head_t *head;
 	int_list_t *node;
 
-	ctx = (pthread_push_val_context_t *) arg;
+	ctx = (pthread_push_context_t *) arg;
 
 	head = ctx->head;
 
@@ -65,7 +65,7 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 {
 	size_t i;
 	int rv;
-	pthread_push_val_context_t *ctx;
+	pthread_push_context_t *ctx;
 	pthread_t threads[num_elements];
 	int_list_head_t *pos_list, *neg_list;
 	int_list_t *node;
@@ -95,8 +95,8 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	}
 
 	for (i = 0; i < num_elements; i++) {
-		ctx = (pthread_push_val_context_t *)
-		    malloc(sizeof(pthread_push_val_context_t));
+		ctx = (pthread_push_context_t *)
+		    malloc(sizeof(pthread_push_context_t));
 		ctx->mutex = mutex;
 
 		ctx->val = elements[i];
@@ -117,7 +117,7 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 			break;
 		}
 
-		rv = pthread_create(&(threads[i]), NULL, pthread_push_val, ctx);
+		rv = pthread_create(&(threads[i]), NULL, _pthread_push, ctx);
 		if (rv) {
 			fprintf(stderr, "pthread_create() returned: %d\n", rv);
 			exit(EXIT_FAILURE);
@@ -167,12 +167,12 @@ void sleep_sort(int *elements, size_t num_elements)
 	_sleep_reorder(SORT, elements, num_elements);
 }
 
-void sleep_shuffle(int *elements, size_t num_elements)
+void _sleep_shuffle(int *elements, size_t num_elements)
 {
 	_sleep_reorder(SHUFFLE, elements, num_elements);
 }
 
-void shuffle(int *elements, size_t num_elements)
+void _shuffle(int *elements, size_t num_elements)
 {
 	size_t i, pos;
 	int swap;
@@ -207,10 +207,10 @@ void _random_sort(void (*shuffle_func) (int *elements, size_t num_elements),
 
 void random_sort(int *elements, size_t num_elements)
 {
-	_random_sort(shuffle, elements, num_elements);
+	_random_sort(_shuffle, elements, num_elements);
 }
 
 void random_sleep_sort(int *elements, size_t num_elements)
 {
-	_random_sort(sleep_shuffle, elements, num_elements);
+	_random_sort(_sleep_shuffle, elements, num_elements);
 }
