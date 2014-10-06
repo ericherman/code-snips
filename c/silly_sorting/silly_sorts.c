@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <limits.h>
 
+enum reorder { SORT, SHUFFLE };
+
 typedef struct int_list_t_ {
 	struct int_list_t_ *next_node;
 	int val;
@@ -59,8 +61,6 @@ void *pthread_push_val(void *arg)
 	return NULL;
 }
 
-enum reorder { SORT, SHUFFLE };
-
 void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 {
 	size_t i;
@@ -69,7 +69,7 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	pthread_t threads[num_elements];
 	int_list_head_t *pos_list, *neg_list;
 	int_list_t *node;
-	pthread_mutex_t mutex;
+	pthread_mutex_t *mutex;
 	const pthread_mutexattr_t *attr = NULL;
 
 	pos_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
@@ -77,13 +77,18 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 		exit(EXIT_FAILURE);
 	}
 	pos_list->first_node = NULL;
+
 	neg_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
 	if (!neg_list) {
 		exit(EXIT_FAILURE);
 	}
 	neg_list->first_node = NULL;
 
-	rv = pthread_mutex_init(&mutex, attr);
+	mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+	if (!mutex) {
+		exit(EXIT_FAILURE);
+	}
+	rv = pthread_mutex_init(mutex, attr);
 	if (rv) {
 		fprintf(stderr, "pthread_mutex_init() returned: %d\n", rv);
 		exit(EXIT_FAILURE);
@@ -92,7 +97,7 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	for (i = 0; i < num_elements; i++) {
 		ctx = (pthread_push_val_context_t *)
 		    malloc(sizeof(pthread_push_val_context_t));
-		ctx->mutex = &mutex;
+		ctx->mutex = mutex;
 
 		ctx->val = elements[i];
 
@@ -122,10 +127,11 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	for (i = 0; i < num_elements; i++) {
 		pthread_join(threads[i], NULL);
 	}
-	rv = pthread_mutex_destroy(&mutex);
+	rv = pthread_mutex_destroy(mutex);
 	if (rv) {
 		fprintf(stderr, "pthread_mutex_destroy() returned: %d\n", rv);
 	}
+	free(mutex);
 
 	while (neg_list->first_node) {
 		node = neg_list->first_node;
