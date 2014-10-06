@@ -202,7 +202,6 @@ void _random_sort(void (*shuffle_func) (int *elements, size_t num_elements),
 			last = elements[i];
 		}
 	}
-
 }
 
 void random_sort(int *elements, size_t num_elements)
