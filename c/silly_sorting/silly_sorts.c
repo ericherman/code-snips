@@ -184,7 +184,7 @@ void shuffle(int *elements, size_t num_elements)
 	}
 }
 
-void _random_sort(void (shuffle_func) (int *elements, size_t num_elements),
+void _random_sort(void (*shuffle_func) (int *elements, size_t num_elements),
 		  int *elements, size_t num_elements)
 {
 	size_t i;
