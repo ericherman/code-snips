@@ -1,7 +1,6 @@
-
+#define _GNU_SOURCE
 #include "qsort_ints.h"
 
-#define _GNU_SOURCE
 #include <stdlib.h>
 
 int compare_ints(int a, int b, int descending)
