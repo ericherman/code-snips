@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "qsort_ints.h"
 #include "silly_sorts.h"
@@ -20,6 +21,8 @@ int main(void)
 	sort_func_t sort_funcs[num_funcs];
 	int i, j, last, negate;
 	int sorted = 1;
+	clock_t start, end;
+	double elapsed;
 
 	sort_funcs[0].name = "qsort";
 	sort_funcs[0].sort_func = qsort_ints;
@@ -48,8 +51,12 @@ int main(void)
 		memcpy(array, vals, num_elements * sizeof(int));
 
 		printf("%18s sorted: { ", sort_funcs[j].name);
+		fflush(stdout);
 
+		start = clock();
 		sort_funcs[j].sort_func(array, num_elements);
+		end = clock();
+		elapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
 
 		last = array[0];
 		for (i = 0; i < num_elements; i++) {
@@ -59,7 +66,7 @@ int main(void)
 			last = array[i];
 			printf("%d, ", array[i]);
 		}
-		printf("}\n");
+		printf("} elapsed: %7.2lf\n", elapsed * 10000);
 	}
 
 	exit(sorted ? EXIT_SUCCESS : EXIT_FAILURE);
