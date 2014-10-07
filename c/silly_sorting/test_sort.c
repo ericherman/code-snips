@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ts_options.h"
 #include "qsort_ints.h"
 #include "silly_sorts.h"
 
@@ -12,20 +13,29 @@ typedef struct sort_func_t_ {
 	void (*sort_func) (int *elements, size_t num_elements);
 } sort_func_t;
 
-int main(void)
+int main(int argc, char *argv[])
 {
-	int num_elements = 4;
-	int *array;
-	int *vals;
-	int element_max_value = 15;
+	int *array, *vals;
 	sort_func_t sort_funcs[NUM_FUNCS];
-	int i, j, last, negate;
-	int sorted = 1;
+	int j, last, negate, sorted;
+	unsigned int i;
 	clock_t start, end;
 	double elapsed;
+	ts_options_t options;
 
-	array = (int *)malloc(num_elements * sizeof(int));
-	vals = (int *)malloc(num_elements * sizeof(int));
+	parse_cmdline_args(&options, argc, argv);
+
+	if (options.version) {
+		printf("%s version 1\n", argv[0]);
+		exit(EXIT_SUCCESS);
+	}
+	if (options.help) {
+		show_usage(stdout, argv[0]);
+		exit(EXIT_SUCCESS);
+	}
+
+	array = (int *)malloc(options.num_elements * sizeof(int));
+	vals = (int *)malloc(options.num_elements * sizeof(int));
 
 	sort_funcs[0].name = "qsort";
 	sort_funcs[0].sort_func = qsort_ints;
@@ -40,9 +50,10 @@ int main(void)
 	sort_funcs[3].sort_func = random_sleep_sort;
 
 	printf("%25s: { ", "un-sorted");
-	for (i = 0; i < num_elements; i++) {
-		negate = rand() % 3;
-		vals[i] = rand() % element_max_value;
+	for (i = 0; i < options.num_elements; i++) {
+
+		negate = rand() % options.negate_one_in;
+		vals[i] = rand() % options.element_max_value;
 		if (negate == 1) {
 			vals[i] *= -1;
 		}
@@ -50,19 +61,20 @@ int main(void)
 	}
 	printf("}\n");
 
+	sorted = 1;
 	for (j = 0; j < NUM_FUNCS; j++) {
-		memcpy(array, vals, num_elements * sizeof(int));
+		memcpy(array, vals, options.num_elements * sizeof(int));
 
 		printf("%18s sorted: { ", sort_funcs[j].name);
 		fflush(stdout);
 
 		start = clock();
-		sort_funcs[j].sort_func(array, num_elements);
+		sort_funcs[j].sort_func(array, options.num_elements);
 		end = clock();
 		elapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
 
 		last = array[0];
-		for (i = 0; i < num_elements; i++) {
+		for (i = 0; i < options.num_elements; i++) {
 			if (array[i] < last) {
 				sorted = 0;
 			}

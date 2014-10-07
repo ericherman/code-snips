@@ -1,7 +1,7 @@
 #
 
 EXECUTABLE=test-sorts
-SOURCES=test_sort.c qsort_ints.c silly_sorts.c
+SOURCES=test_sort.c ts_options.c qsort_ints.c silly_sorts.c
 
 CC=gcc
 STD_CFLAGS=-std=c89
