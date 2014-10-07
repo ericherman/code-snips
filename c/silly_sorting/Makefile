@@ -4,7 +4,7 @@ EXECUTABLE=test-sorts
 SOURCES=test_sort.c qsort_ints.c silly_sorts.c
 
 CC=gcc
-STD_CFLAGS=--std=c99
+STD_CFLAGS=-std=c89
 NOISY_CFLAGS=-Werror -Wall -Wextra -pedantic
 OPTIMIZER_CFLAGS=-ggdb -O0
 

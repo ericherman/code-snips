@@ -66,11 +66,13 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	size_t i;
 	int rv;
 	pthread_push_context_t *ctx;
-	pthread_t threads[num_elements];
+	pthread_t *threads;
 	int_list_head_t *pos_list, *neg_list;
 	int_list_t *node;
 	pthread_mutex_t *mutex;
 	const pthread_mutexattr_t *attr = NULL;
+
+	threads = (pthread_t *) malloc(num_elements * sizeof(pthread_t));
 
 	pos_list = (int_list_head_t *) malloc(sizeof(int_list_head_t));
 	if (!pos_list) {
@@ -127,6 +129,7 @@ void _sleep_reorder(enum reorder order, int *elements, size_t num_elements)
 	for (i = 0; i < num_elements; i++) {
 		pthread_join(threads[i], NULL);
 	}
+	free(threads);
 	rv = pthread_mutex_destroy(mutex);
 	if (rv) {
 		fprintf(stderr, "pthread_mutex_destroy() returned: %d\n", rv);

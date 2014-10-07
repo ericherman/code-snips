@@ -6,6 +6,7 @@
 #include "qsort_ints.h"
 #include "silly_sorts.h"
 
+#define NUM_FUNCS 4
 typedef struct sort_func_t_ {
 	const char *name;
 	void (*sort_func) (int *elements, size_t num_elements);
@@ -13,16 +14,18 @@ typedef struct sort_func_t_ {
 
 int main(void)
 {
-	int num_funcs = 4;
 	int num_elements = 4;
-	int array[num_elements];
-	int vals[num_elements];
-	int element_max_value = 10;
-	sort_func_t sort_funcs[num_funcs];
+	int *array;
+	int *vals;
+	int element_max_value = 15;
+	sort_func_t sort_funcs[NUM_FUNCS];
 	int i, j, last, negate;
 	int sorted = 1;
 	clock_t start, end;
 	double elapsed;
+
+	array = (int *)malloc(num_elements * sizeof(int));
+	vals = (int *)malloc(num_elements * sizeof(int));
 
 	sort_funcs[0].name = "qsort";
 	sort_funcs[0].sort_func = qsort_ints;
@@ -47,7 +50,7 @@ int main(void)
 	}
 	printf("}\n");
 
-	for (j = 0; j < num_funcs; j++) {
+	for (j = 0; j < NUM_FUNCS; j++) {
 		memcpy(array, vals, num_elements * sizeof(int));
 
 		printf("%18s sorted: { ", sort_funcs[j].name);
@@ -66,8 +69,11 @@ int main(void)
 			last = array[i];
 			printf("%d, ", array[i]);
 		}
-		printf("} elapsed: %7.2lf\n", elapsed * 10000);
+		printf("} elapsed: %9.2f\n", elapsed * 10000);
 	}
+
+	free(array);
+	free(vals);
 
 	exit(sorted ? EXIT_SUCCESS : EXIT_FAILURE);
 }
