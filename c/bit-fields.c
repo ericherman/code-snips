@@ -8,8 +8,9 @@
 
 /* this syntax uses only a few bits per field */
 typedef struct {
-	unsigned int v:3;
-	unsigned int w:2;
+	unsigned int u:3;
+	unsigned int v:2;
+	unsigned int w:1;
 	int x:3;
 	int y:2;
 	int z:1;
@@ -75,23 +76,28 @@ int main(int argc, char *argv[])
 	a = (argc > 1) ? atoi(argv[1]) : 5;
 	le = (argc > 2) ? atoi(argv[2]) : 0;
 
+	s.u = a;
 	s.v = a;
 	s.w = a;
 	s.x = a;
 	s.y = a;
 	s.z = a;
 
-	printf("         int a   = %33d (decimal)\n", a);
-	printf("         int a   = %33s (binary)\n\n",
+	printf("             int = %33d (decimal)\n", a);
+	printf("             int = %33s (binary)\n\n",
 	       utob(buf, BITS_UI_BUF_LEN, a, BITS_UNSIGNED_INT, le));
 
-	printf("unsigned int v:3 = %33u (decimal)\n", s.v);
-	printf("unsigned int v:3 = %33s (binary)\n\n",
-	       utob(buf, BITS_UI_BUF_LEN, s.v, 3, le));
+	printf("unsigned int u:3 = %33u (decimal)\n", s.u);
+	printf("unsigned int u:3 = %33s (binary)\n\n",
+	       utob(buf, BITS_UI_BUF_LEN, s.u, 3, le));
 
-	printf("unsigned int w:2 = %33u (decimal)\n", s.w);
-	printf("unsigned int w:2 = %33s (binary)\n\n",
-	       utob(buf, BITS_UI_BUF_LEN, s.w, 2, le));
+	printf("unsigned int v:2 = %33u (decimal)\n", s.v);
+	printf("unsigned int v:2 = %33s (binary)\n\n",
+	       utob(buf, BITS_UI_BUF_LEN, s.v, 2, le));
+
+	printf("unsigned int w:1 = %33u (decimal)\n", s.w);
+	printf("unsigned int w:1 = %33s (binary)\n\n",
+	       utob(buf, BITS_UI_BUF_LEN, s.w, 1, le));
 
 	printf("         int x:3 = %33d (decimal)\n", s.x);
 	printf("         int x:3 = %33s (binary)\n\n",
