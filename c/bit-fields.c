@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	s.y = a;
 	s.z = a;
 
-	printf("         int a   = %33u (decimal)\n", a);
+	printf("         int a   = %33d (decimal)\n", a);
 	printf("         int a   = %33s (binary)\n\n",
 	       utob(buf, BITS_UI_BUF_LEN, a, BITS_UNSIGNED_INT, le));
 
