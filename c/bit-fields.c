@@ -21,7 +21,8 @@ size_t strnlen(char *str, size_t buf_size)
 {
 	size_t len = strlen(str);
 	if (len > buf_size) {
-		exit(EXIT_FAILURE);
+		/* exit(EXIT_FAILURE); */
+		return buf_size;
 	}
 	return len;
 }
@@ -31,6 +32,11 @@ void revstr(char *str, size_t buf_size)
 {
 	size_t i, j, len;
 	char swap;
+
+	if (buf_size == 0) {
+		/* exit(EXIT_FAILURE); */
+		return;
+	}
 
 	len = strnlen(str, buf_size);
 	for (i = 0, j = len - 1; i < j; i++, j--) {
@@ -47,14 +53,19 @@ void revstr(char *str, size_t buf_size)
 char *utob(char *buf, size_t len, unsigned long val, int bits, int lil_endian)
 {
 	size_t i, shift, str_pos;
+	if (len == 0) {
+		/* exit(EXIT_FAILURE); */
+		/* return NULL; */
+		return buf;
+	}
 	if (bits < 1) {
 		bits = BITS_UNSIGNED_LONG;
 	}
 
 	str_pos = 0;
 	for (i = bits; i > 0; i--) {
-		if (str_pos >= len) {
-			exit(EXIT_FAILURE);
+		if (str_pos >= (len - 1)) {
+			break;
 		}
 		shift = (i - 1);
 		buf[str_pos++] = ((val >> shift) & 1) ? '1' : '0';
