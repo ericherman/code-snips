@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# There might be a better way to build locally, if you're willing to
+# have the local sources sit in the upstream directory of the local
+# filesystem, you can follow the process described by Katrina Owen:
+#
+# https://blog.splice.com/contributing-open-source-git-repositories-go/
+#
+# But this gives me the impression that I am lying to myself; the
+# pstop source must forever sit in the 'sjmudd' directory but my
+# version is an ericherman codebase now. Just like Java before it, if I
+# wish to maintain it as a sister project, I must rename the paths in
+# the sources, which makes merging back and forth between forks harder.
+#
+# Absolute paths bake-in a "true owner" which strikes me as very
+# counter-git, counter-bazaar development.
+#
+# So far, this is the best I have come up with.
+#  --Eric Herman
+
+UPSTREAM=sjmudd
+PROJECT=pstop
+case $1 in
+    '')
+        echo 'specify "upstream" or "local" or a repo owner name'
+        exit 1
+        ;;
+    local)
+        PARENT_DIR=$(dirname `pwd`)
+        OWNER=$(basename $PARENT_DIR)
+        ;;
+    upstream)
+        OWNER=$UPSTREAM
+        ;;
+    *)
+        OWNER=$1
+        ;;
+esac
+GITHUB_REPO="github.com/$OWNER/$PROJECT"
+echo "setting go code to point to $GITHUB_REPO"
+sed -i -e"s@github.com/.*/$PROJECT@$GITHUB_REPO@g" \
+     $(find . -name '*.go')
+#git diff
