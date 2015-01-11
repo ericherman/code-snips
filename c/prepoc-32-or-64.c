@@ -14,7 +14,7 @@
 #endif
 #endif
 
-int main(int argc, char **argv)
+int main(void)
 {
 	printf("DIFINED_WORDSIZE: %s\n", DIFINED_WORDSIZE);
 	return sizeof(void *);
