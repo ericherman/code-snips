@@ -1,0 +1,12 @@
+#!/bin/bash
+GIT_VERSION=`git --version | cut -f3 -d' '`
+
+DARN=1;
+while [ $DARN -ne 0 ]
+do
+  if [ "$GIT_VERSION" \> "2.1" ]; then
+      git pull --rebase=preserve && git push; DARN=$?
+  else
+      git fetch && git rebase --preserve-merges && git push; DARN=$?
+  fi
+done
