@@ -1,6 +1,12 @@
 #!/bin/bash
 GIT_VERSION=`git --version | cut -f3 -d' '`
 
+UNSTAGED_FILES=$(git status --untracked-files=no --short | wc --lines)
+if [ $UNSTAGED_FILES -ne 0 ]; then
+    echo >&2 $'\x07'"Error: repository contains unstaged changes; exiting."
+    exit 1
+fi
+
 DARN=1;
 while [ $DARN -ne 0 ]
 do
