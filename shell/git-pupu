@@ -1,15 +1,15 @@
 #!/bin/bash
 GIT_VERSION=`git --version | cut -f3 -d' '`
 
-UNSTAGED_FILES=$(git status --untracked-files=no --short | wc --lines)
-if [ $UNSTAGED_FILES -ne 0 ]; then
-    echo >&2 $'\x07'"Error: repository contains unstaged changes; exiting."
-    exit 1
-fi
-
 DARN=1;
 while [ $DARN -ne 0 ]
 do
+  UNSTAGED_FILES=$(git status --untracked-files=no --short | wc --lines)
+  if [ $UNSTAGED_FILES -ne 0 ]; then
+      echo >&2 $'\x07'"Error: repository contains unstaged changes; exiting."
+      exit 1
+  fi
+
   if [ "$GIT_VERSION" \> "2.1" ]; then
       git pull --rebase=preserve && git push; DARN=$?
   else
