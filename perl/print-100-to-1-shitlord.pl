@@ -14,7 +14,7 @@ for(my $i=0;
 #  (https://github.com/avar) which truly made my day.
 # I thought I would adapt the idea to perl, just for fun.
 
-    shit_lord( \$i ) ; $i-- ) {
+    shit_lord( \$i ) > 0 ; $i-- ) {
 
     print $i, "\n";
 }
