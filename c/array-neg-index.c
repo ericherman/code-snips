@@ -1,5 +1,12 @@
 #include <stdio.h>
 #include <string.h>
+
+/*
+  Compile with -O0
+
+  gcc -O0 -o array-neg-index array-neg-index.c && ./array-neg-index
+ */
+
 int main(void)
 {
 	char foo;
