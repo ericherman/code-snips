@@ -1,0 +1,2 @@
+#!/bin/sh
+ls -l /dev/* | egrep --only-matching "/dev/[hs]d[a-z]+" | sort -u
