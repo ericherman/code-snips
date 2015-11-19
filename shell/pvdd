@@ -3,11 +3,11 @@
 IN_FILE=$1
 OUT_FILE=$2
 
-# any block size is probably good enough
+# Any block size is probably good enough;
 # experimenting on my own systems has not
 # shown a great difference between various
 # values over 4096. Letting "dd" chose a
-# value seems pretty good
+# value seems pretty good.
 BLOCK_SIZE=$3
 if [ "_${BLOCK_SIZE}_" == "__" ]; then
    BLOCK_SIZE=32768
@@ -17,10 +17,10 @@ if [ "_${BLOCK_SIZE}_" != "_0_" ]; then
   BS="bs=${BLOCK_SIZE}"
 fi;
 
-# if the IN_FILE is a regular file, we can use the ls command
+# If the IN_FILE is a regular file, we can use the ls command
 # to determine the vale; if it is a /dev/sda2 or similar,
 # it might be easier just to pass it in, but this will try
-# to make a good guess based on "df -B1"
+# to make a good guess based on "df -B1".
 SIZE=$4
 if [ "_${SIZE}_" == "__" ]; then
    if [[ ${IN_FILE} == /dev/* ]]; then
