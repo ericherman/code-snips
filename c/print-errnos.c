@@ -1,15 +1,16 @@
 
 /*
 eric@titan:~/src/code-snips/c$ echo -e "#include <errno.h>\n#include <stdio.h>\n#include <string.h>\nint main()\n{" > print-errnos.c
+eric@titan:~/src/code-snips/c$ echo -e "\tprintf(\"%3d: %-16s\\\"%s\\\"\\\n\", 0, \"\", strerror(0));" >> print-errnos.c
 eric@titan:~/src/code-snips/c$ cpp -dM /usr/include/errno.h | grep 'define E' | sort -n -k 3 | cut -d' ' -f2 | sed -e's/^\(E[A-Z0-9_]*\)/\tprintf("%3d: %-16s\\\"%s\\"\\n", \1, "\1", strerror(\1));/' >> print-errnos.c
 eric@titan:~/src/code-snips/c$ echo -e "\n\treturn 0;\n}" >> print-errnos.c
 */
-
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 int main()
 {
+	printf("%3d: %-16s\"%s\"\n", 0, "", strerror(0));
 	printf("%3d: %-16s\"%s\"\n", EDEADLOCK, "EDEADLOCK", strerror(EDEADLOCK));
 	printf("%3d: %-16s\"%s\"\n", ENOTSUP, "ENOTSUP", strerror(ENOTSUP));
 	printf("%3d: %-16s\"%s\"\n", EWOULDBLOCK, "EWOULDBLOCK", strerror(EWOULDBLOCK));
