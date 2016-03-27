@@ -7,14 +7,14 @@
 #define BITS_UI_BUF_LEN (BITS_UNSIGNED_INT + 1)
 
 /* this syntax uses only a few bits per field */
-typedef struct {
+struct teeny_s {
 	unsigned int u:3;
 	unsigned int v:2;
 	unsigned int w:1;
 	int x:3;
 	int y:2;
 	int z:1;
-} teeny_t;
+};
 
 #if _POSIX_C_SOURCE < 200809L
 size_t strnlen(char *str, size_t buf_size)
@@ -80,7 +80,7 @@ char *utob(char *buf, size_t len, unsigned long val, int bits, int lil_endian)
 int main(int argc, char *argv[])
 {
 	int a;
-	teeny_t s;
+	struct teeny_s s;
 	char buf[BITS_UI_BUF_LEN];
 	int le;
 
@@ -122,6 +122,6 @@ int main(int argc, char *argv[])
 	printf("         int z:1 = %33s (binary)\n\n",
 	       utob(buf, BITS_UI_BUF_LEN, s.z, 1, le));
 
-	printf("sizeof struct is %u bytes\n", sizeof(teeny_t));
+	printf("sizeof struct is %u bytes\n", sizeof(struct teeny_s));
 	return 0;
 }
