@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# extracted from https://github.com/torvalds/linux/blob/master/scripts/Lindent
+LINDENT='indent -npro -kr -i8 -ts8 -sob -l80 -ss -ncs -cp1 -il0'
+
+$LINDENT -T FILE -T size_t "$@"
