@@ -1,0 +1,25 @@
+#!/bin/sh
+TOP_LEVEL=$(git rev-parse --show-toplevel)
+COMMIT=$(git show "$@" | head -n1 | cut -d' ' -f2)
+
+BRANCH=$(git branch | cut -d' ' -f2)
+
+#TODO:use branch to find upstream, rather than just the first URL
+URL=$(grep url $TOP_LEVEL/.git/config | head -n1 | cut -d'=' -f2)
+#convert to https
+URL=$(echo "$URL" | sed -e 's/[ ]git@\([^:]*\):/https:\/\/\1\//')
+#strip trailing ".git" from bare repo
+URL=$(echo "$URL" | sed -e 's/\(.*\)\.git/\1/')
+
+# different domains have different URL formats:
+if [ $( echo "$URL" | grep 'github.com' ) ]; then
+	echo "$URL/commit/$COMMIT"
+elif [ $( echo "$URL" | grep 'freesa.org' ) ]; then
+	URL=$( echo $URL | sed -e 's/https:/http/' )
+	echo "$URL/commit/$COMMIT"
+elif [ $( echo "$URL" | grep 'bitbucket.org' ) ]; then
+	echo "$URL/commits/$COMMIT"
+else
+	# try this as a default?
+	echo "$URL/commit/$COMMIT"
+fi
