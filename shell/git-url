@@ -8,6 +8,7 @@ BRANCH=$(git branch | cut -d' ' -f2)
 URL=$(grep url $TOP_LEVEL/.git/config | head -n1 | cut -d'=' -f2)
 #convert to https
 URL=$(echo "$URL" | sed -e 's/[ ]git@\([^:]*\):/https:\/\/\1\//')
+URL=$(echo "$URL" | sed -e 's/[ ]ssh:/https:/')
 #strip trailing ".git" from bare repo
 URL=$(echo "$URL" | sed -e 's/\(.*\)\.git/\1/')
 
