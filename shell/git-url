@@ -15,7 +15,7 @@ URL=$(echo "$URL" | sed -e 's/\(.*\)\.git/\1/')
 if [ $( echo "$URL" | grep 'github.com' ) ]; then
 	echo "$URL/commit/$COMMIT"
 elif [ $( echo "$URL" | grep 'freesa.org' ) ]; then
-	URL=$( echo $URL | sed -e 's/https:/http/' )
+	URL=$( echo $URL | sed -e 's@https://@http://@' )
 	echo "$URL/commit/$COMMIT"
 elif [ $( echo "$URL" | grep 'bitbucket.org' ) ]; then
 	echo "$URL/commits/$COMMIT"
