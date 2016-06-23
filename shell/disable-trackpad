@@ -1,0 +1,10 @@
+#!/bin/bash
+NEW_ENABLE_STATE=0
+
+if [ "_${1}_" == "_enable_" ]; then
+NEW_ENABLE_STATE=1
+fi
+
+TOUCHPAD_ID=$(xinput list | grep -i Touchpad | cut -d= -f2 | cut -d'[' -f1)
+
+xinput set-prop $TOUCHPAD_ID "Device Enabled" $NEW_ENABLE_STATE
