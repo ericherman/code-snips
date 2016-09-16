@@ -20,6 +20,8 @@ DARK_RED="\[\e[0;31m\]"
 BROWN="\[\e[0;33m\]"
 
 if [ "_${SUBNET}_" == "__" ]; then
+    # laptop7.foo.example.com
+    # first shift off the machine name (laptop7), then pop off the ".com", then the "example"
     SUBNET=$( perl -le 'my @parts = split "\\.", `uname -n`; shift @parts; pop @parts; pop @parts; print join(".", @parts)' )
     if [ "_${SUBNET}_" == "__" ]; then
         SUBNET="NO_SUBNET"
