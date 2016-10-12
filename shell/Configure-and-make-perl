@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# terminate after the first line that fails (returns nonzero exit code)
+set -e
+
+if [ "_${PREFIX}_" = "__" ]; then
+PREFIX=${HOME}/builds/perl-blead
+fi
+
+DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
+#DEBUG_OPTS=-UDEBUGGING
+
+# not perfect, but hopefully okay
+TEST_JOBS=$(( 2 + $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
+
+CC="gcc -O3"
+
+./Configure \
+	-Dusedevel \
+	-des \
+        -DSILENT_NO_TAINT_SUPPORT \
+        -Dprefix=${PREFIX} \
+        -Uusevendorprefix \
+        -Dsiteprefix=${PREFIX} \
+        -Dinstallprefix=${PREFIX} \
+        -Dinstallstyle="lib" \
+        -Darchlib=${PREFIX}/lib \
+        -Dman1dir=${PREFIX}/man/man1 \
+        -Dman3dir=${PREFIX}/man/man3 \
+        -Dprivlib=${PREFIX}/lib \
+        -Dsitearch=${PREFIX}/site/lib \
+        -Dsitebin=${PREFIX}/site/bin \
+        -Dsitelib=${PREFIX}/site/lib \
+        -Dsiteman1dir=${PREFIX}/site/man/man1 \
+        -Dsiteman3dir=${PREFIX}/site/man/man3 \
+        -Dcc="${CC}" \
+        -Dlibpth="${PREFIX}/lib" \
+        -Dglibpth="${PREFIX}/lib" \
+        -Dscriptdir="${PREFIX}/bin" \
+        -Uinstallusrbinperl \
+        -Duseshrplib \
+        -Dusesitecustomize \
+	$DEBUG_OPTS \
+        -Di_db \
+        -A 'prepend:libswanted=pthread '
+make
+make test_harness
+make install
