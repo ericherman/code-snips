@@ -41,9 +41,9 @@ int main(int argc, char **argv)
 	pt1.x = argc > 1 ? atoi(argv[1]) : 2;
 	pt1.y = argc > 2 ? atoi(argv[2]) : 3;
 
-	pt2.x = argc > 3 ? atoi(argv[3]) :5;
-	pt2.y = argc > 4 ? atoi(argv[4]) :7;
-	pt2.z = argc > 5 ? atoi(argv[5]) :11;
+	pt2.x = argc > 3 ? atoi(argv[3]) : 5;
+	pt2.y = argc > 4 ? atoi(argv[4]) : 7;
+	pt2.z = argc > 5 ? atoi(argv[5]) : 11;
 
 	pt = &pt1;
 	move_point(pt, 13, 17);
