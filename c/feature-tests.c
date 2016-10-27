@@ -1,5 +1,29 @@
+/* feature-tests.c
 
-       /* ftm.c */
+eric@titan:~/src/code-snips/c$ uname -a
+Linux titan 4.4.0-45-generic #66-Ubuntu SMP Wed Oct 19 14:12:05 UTC 2016 i686 i686 i686 GNU/Linux
+eric@titan:~/src/code-snips/c$ /lib/i386-linux-gnu/libc.so.6 | head -n1
+GNU C Library (Ubuntu GLIBC 2.23-0ubuntu4) stable release version 2.23, by Roland McGrath et al.
+eric@titan:~/src/code-snips/c$ gcc --version | head -n1
+gcc (Ubuntu 5.4.0-6ubuntu1~16.04.2) 5.4.0 20160609
+eric@titan:~/src/code-snips/c$ gcc -std=gnu11 -Dthread_local=__thread  -o feature-tests feature-tests.c
+eric@titan:~/src/code-snips/c$ ./feature-tests
+__STDC__ defined
+__STDC_VERSION__ defined: 201112L
+__STDC_NO_THREADS__ defined
+__STDC_IEC_559__ defined
+__STDC_IEC_559_COMPLEX__ defined
+__GNUC__ defined
+__GNU_LIBRARY__ defined
+_POSIX_SOURCE defined
+_POSIX_C_SOURCE defined: 200809L
+_DEFAULT_SOURCE defined
+_ATFILE_SOURCE defined
+_SC_PASS_MAX defined: 88L
+_SC_XOPEN_XCU_VERSION defined: 90L
+eric@titan:~/src/code-snips/c$
+
+*/
 
 #include <stdio.h>
 #include <unistd.h>
