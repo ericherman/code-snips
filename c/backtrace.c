@@ -1,12 +1,8 @@
-/*
-backtrace.c: demo of backtrace(), backtrace_symbols_fd()
+/* backtrace.c: demo of backtrace(), backtrace_symbols_fd()
 Copyright (C) 2016 Eric Herman <eric@freesa.org>
-
-THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
+THIS IS PROVIDED WITHOUT WARRANTY, TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 Free Software license: LGPL version 3 or at your option any later version:
-  https://www.gnu.org/licenses/lgpl.txt
-*/
+  https://www.gnu.org/licenses/lgpl.txt */
 /*
 $ gcc -std=c89 -Wall -Werror -Wextra -Wpedantic \
   -D_POSIX_SOURCE \
