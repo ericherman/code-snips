@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # There might be a better way to build locally, if you're willing to
 # have the local sources sit in the upstream directory of the local

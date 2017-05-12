@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 TOP_LEVEL=$(git rev-parse --show-toplevel)
 COMMIT=$(git show "$@" | head -n1 | cut -d' ' -f2)
 
