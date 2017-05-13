@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# Adapted from Keithr's "rbackup"
+#	$Revision: 1.5 $ $Date: 2008-11-08 00:25:10 $
+#
+#	Copyright (C) 2008 Keith Reynolds.
+#	All rights reserved.
+#
+# Back up an entire system to a backup server using rsync.
+# Uses the --link-dest option to keep old copies around
+# without using much disk space.
+#
+HOSTNAME=$(hostname)
+SHORT_HOSTNAME=${HOSTNAME%%.*}
+RSYNC="rsync"
+#MOUNT_POINT="/media/${USER}/backup2"
+MOUNT_POINT="/media/eric/backup2"
+PREFIX="$MOUNT_POINT/$SHORT_HOSTNAME"
+LAST_BACKUP="${PREFIX}/var/last_backup"
+LOCAL_BACKUP_ROOT="${PREFIX}/backups"
+
+if [ "`readlink -f $MOUNT_POINT`" != "`readlink -f ${PREFIX}/..`" ]
+then
+    echo "$MOUNT_POINT not mounted"
+    exit 1
+else
+    echo "$MOUNT_POINT mounted"
+fi
+
+
+# uncomment to run backups for the first time. Otherwise it will create the
+# directory on the main disk if the drive is not mounted!
+# mkdir -p ${LOCAL_BACKUP_ROOT}
+
+OPTIONS=(\
+--archive \
+--hard-links \
+--sparse \
+--human-readable \
+--numeric-ids \
+--exclude '*\.electricsheep*' --exclude '*\.cache*' --exclude '*\.adobe*' \
+--exclude '*\.pulse*' --exclude '*\.mozilla*' --exclude '*\.thumbnails' \
+--exclude '/home/big_stuff' \
+--include '*sessionstore.js' \
+--include '*bookmark*' \
+)
+
+#
+# Append a list of values to an array.
+#
+array_append()
+{
+    local array_var="$1"
+    shift
+
+    for arg
+    do
+        eval $array_var\[\${\#$array_var\[@\]}\]="'$arg'"
+    done
+}
+
+array_append options "${OPTIONS[@]}"
+
+
+FILESYSTEMS=(/home)
+
+# would like to make conditional, but is broken
+# if [ "${FILESYSTEMS[@]}" ]
+# then
+    array_append options --one-file-system
+    filesystems=("${FILESYSTEMS[@]}")
+# else
+#     filesystems=("/")
+# fi
+
+if [ -t 0 ]
+then
+    # may also wish to add --verbose --progress --itemize-changes when watching
+    # the backup run instead of using it from a cron job.
+    array_append options --progress --stats
+elif [ "$LOGFILE" ]
+then
+    exec >> "$LOGFILE" 2>&1
+fi
+
+
+link_root="${LOCAL_BACKUP_ROOT}"
+backup_dest="${LOCAL_BACKUP_ROOT}"
+
+if [ -e "$LAST_BACKUP" ]
+then
+    last_backup=$(cat "$LAST_BACKUP")
+    array_append options "--link-dest=${link_root}/${last_backup}"
+fi
+
+now=$(date +%F)
+
+if [ "$now" = "$last_backup" ]
+then
+    now=$(date +%F.%H.%M)
+fi
+
+$RSYNC "${options[@]}" "${filesystems[@]}" "${backup_dest}/${now}"
+result=$?
+
+#
+# Rsync error code 23 means some files could not be backed up (which
+# often means the files were in use on a Windows system), and
+# 24 means some files vanished between being added to the list
+# and the attempt to send them to the server.  Since we're backing
+# up a live system, those aren't fatal errors.
+#
+if [ $result -eq 0 -o $result -eq 23 -o $result -eq 24 ]
+then
+    mkdir -p "${LAST_BACKUP%/*}"
+    echo $now > "$LAST_BACKUP"
+else
+    echo "rsynch exited with $result"
+    echo $result
+fi
