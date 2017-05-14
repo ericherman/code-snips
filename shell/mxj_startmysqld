@@ -1,0 +1,35 @@
+#!/bin/bash
+if [ -z "$1" ] || [ -z "$2" ]
+then
+  echo Usage: $0 port application-name
+  exit 1
+else
+  BASEDIR="${HOME}/mysql_deploys/$2-$1-c.mxj"
+fi
+
+CLASSPATH="${HOME}/ews-work/connector-mxj/bin:${HOME}/src/bzr-cj-repo/connector-j-5-1/bin"
+
+java -cp ${CLASSPATH} com.mysql.management.MysqldResource \
+  --basedir=$BASEDIR \
+  --port=$1 \
+  --innodb_file_per_table \
+  --innodb_locks_unsafe_for_binlog=1 \
+  --innodb_buffer_pool_size=512M \
+  --innodb_log_file_size=32M \
+  --innodb_flush_log_at_trx_commit=2 \
+  --innodb_support_xa=0 \
+  --innodb_max_dirty_pages_pct=20 \
+  --skip-locking \
+  --key_buffer=32M \
+  --max_allowed_packet=64M \
+  --table_cache=256 \
+  --thread_cache_size=16 \
+  --max_heap_table_size=32M \
+  --tmp_table_size=32M \
+  --sort_buffer_size=512K \
+  --read_buffer_size=512K \
+  --read_rnd_buffer_size=512K \
+  --net_buffer_length=16K \
+  --myisam_sort_buffer_size=16M \
+  --log=/tmp/$2-$1-c.mxj-mysqld.log
+
