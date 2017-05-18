@@ -1,0 +1,11 @@
+#!/bin/bash
+PARENT_DIR=$1
+#PARENT_DIR=~/src/bzr-cj-repo/
+pushd $PARENT_DIR
+for file in *;
+do
+  pushd $file
+  bzr pull
+  popd
+done
+popd
