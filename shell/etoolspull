@@ -1,0 +1,11 @@
+#!/bin/bash
+pushd ~/mworkspace/etools-repo/
+for file in *;
+do
+  pushd $file > /dev/null
+  echo ""
+  echo "Now pulling: $file"
+  bzr pull
+  popd > /dev/null
+done
+popd
