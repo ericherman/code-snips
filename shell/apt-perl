@@ -1,0 +1,4 @@
+#!/bin/bash
+echo $@ |
+perl -e '$x=<>; chomp($x); $x=~s/::/-/; $x=lc($x); print "lib$x-perl"' |
+xargs echo sudo apt-get install
