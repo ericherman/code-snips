@@ -1,0 +1,6 @@
+#!/bin/bash
+## Clear recently accessed files
+rm -fv ~/.recently-used.xbel
+rm -fv ~/.recently-used.xbel.*
+rm -fv ~/.local/share/recently-used.xbel
+rm -fv ~/.local/share/recently-used.xbel.*
