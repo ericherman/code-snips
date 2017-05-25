@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# usage:
+#    mount-usb [DEV] [DIR] [FSTYPE]
+
+# OPTS="uhelper=udisks2,nodev,nosuid,uid=${UID},gid=${CDROM},shortname=mixed,utf8=1,showexec,flush"
+OPTS="uhelper=udisks2,nodev,nosuid,uid=${UID},shortname=mixed,utf8=1,showexec,flush"
+
+
+DEV=$1
+if [ "_${DEV}_" == "__" ]; then
+   DEV=/dev/sde1
+fi;
+
+DIR=$2
+if [ "_${DIR}_" == "__" ]; then
+   USER_NAME=`id -nu`
+   DIR=/media/${USER_NAME}/usb_sd_card
+fi;
+
+FSTYPE=$3
+if [ "_${FSTYPE}_" == "__" ]; then
+   FSTYPE=vfat
+fi;
+
+
+mkdir -pv $DIR
+sudo mount -t $FSTYPE -o $OPTS $DEV $DIR
