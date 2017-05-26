@@ -1,0 +1,8 @@
+#!/bin/bash
+# should be a cronjob, not a sleep
+. ~/.sshenv
+while true; do
+    whatismyip.sh > /tmp/utrecht-home-ip.txt
+    scp /tmp/utrecht-home-ip.txt tiedyedfreaks.org:/tmp/
+    sleep $((60 * 60))
+done
