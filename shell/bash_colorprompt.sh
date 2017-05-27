@@ -4,6 +4,7 @@ case "$TERM" in
     screen)      have_color=yes;;
     xterm)       have_color=yes;;
     xterm-color) have_color=yes;;
+    xterm-256color) have_color=yes;;
     ansi)        have_color=yes;;
 esac
 
