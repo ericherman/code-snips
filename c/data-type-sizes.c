@@ -18,6 +18,7 @@ sizeof(unsigned long long):    8 bytes      18446744073709551615 max
             sizeof(double):    8 bytes
        sizeof(long double):   12 bytes
 
+
 $ arch
 x86_64
 $ ./data-type-sizes
@@ -33,7 +34,25 @@ sizeof(unsigned long long):    8 bytes      18446744073709551615 max
             sizeof(double):    8 bytes
        sizeof(long double):   16 bytes
 
-avr (arduino mega):
+
+$ arch
+armv7l
+$ ./data-type-sizes
+                  CHAR_BIT:    8 bits
+                  CHAR_MIN:    0 (unsigned)
+     sizeof(unsigned char):    1 bytes                       255 max
+    sizeof(unsigned short):    2 bytes                     65535 max
+      sizeof(unsigned int):    4 bytes                4294967295 max
+     sizeof(unsigned long):    4 bytes                4294967295 max
+sizeof(unsigned long long):    8 bytes      18446744073709551615 max
+            sizeof(size_t):    4 bytes                4294967295 max
+            sizeof(void *):    4 bytes
+             sizeof(float):    4 bytes
+            sizeof(double):    8 bytes
+       sizeof(long double):    8 bytes
+
+
+avi (arduino mega):
                   CHAR_BIT:    8 bits
                   CHAR_MIN:    0 (unsigned)
      sizeof(unsigned char):    1 bytes                       255 max
@@ -45,6 +64,7 @@ sizeof(unsigned long long):    8 bytes
              sizeof(float):    4 bytes
             sizeof(double):    4 bytes
        sizeof(long double):    4 bytes
+
 
 sam3x (arduino due):
                   CHAR_BIT:    8 bits
@@ -58,7 +78,6 @@ sizeof(unsigned long long):    8 bytes      18446744073709551615 max
              sizeof(float):    4 bytes
             sizeof(double):    8 bytes
        sizeof(long double):    8 bytes
-
 */
 
 #include <stdio.h>
@@ -90,6 +109,8 @@ int main(void)
 
 	printf("%26s:  %3lu bytes %25llu max\n", "sizeof(size_t)",
 	       (unsigned long)sizeof(size_t), (unsigned long long)SIZE_MAX);
+	printf("%26s:  %3lu bytes\n", "sizeof(void *)",
+	       (unsigned long)sizeof(void *));
 
 	printf("%26s:  %3lu bytes\n", "sizeof(float)",
 	       (unsigned long)sizeof(float));
