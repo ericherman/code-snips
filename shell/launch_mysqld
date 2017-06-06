@@ -1,0 +1,34 @@
+#!/bin/bash
+MYSQLD_BASE_DIR=${HOME}/builds/mysql-5.5.19
+MYSQLD_BIN_DIR=${MYSQLD_BASE_DIR}/bin
+MYSQLD_DATA_DIR=${MYSQLD_BASE_DIR}/data
+MYSQLD_LOG_DIR=/tmp/$UID/mysql_logs
+MYSQLD_PORT=13306
+
+mkdir -pv ${MYSQLD_LOG_DIR};
+
+# --ignore-builtin-innodb
+# --skip-locking
+
+$MYSQLD_BIN_DIR/mysqld \
+ --no-defaults \
+ --basedir=$MYSQLD_BASE_DIR \
+ --datadir=$MYSQLD_DATA_DIR \
+ --general-log-file=${MYSQLD_LOG_DIR}/mysqld.log \
+ --port=${MYSQLD_PORT} \
+ --pid-file=${MYSQLD_DATA_DIR}/mysqld.pid \
+ --socket=${MYSQLD_DATA_DIR}/mysql.sock \
+ --myisam_sort_buffer_size=16M \
+ --read_buffer_size=512K \
+ --read_rnd_buffer_size=512K \
+ --max_allowed_packet=64M \
+ --table_cache=256 \
+ --key_buffer=32M \
+ --tmp_table_size=32M \
+ --net_buffer_length=16K \
+ --max_heap_table_size=32M \
+ --sort_buffer_size=512K \
+ --thread_cache_size=16 &
+
+sleep 3
+ps auxwww | grep -i "^USER\|mysqld" | grep -v grep | grep -v launch_mysqld
