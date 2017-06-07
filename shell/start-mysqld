@@ -1,0 +1,59 @@
+#!/bin/bash
+
+BASEDIR=${HOME}/builds/mysql-server
+LOG_DIR=/tmp/$UID/mysql_logs
+
+if [ -z "$1" ]
+then
+  DATADIR="${BASEDIR}/data"
+else
+  DATADIR=$1
+fi
+
+if [ -z "$2" ]
+then
+  PORT=13306
+else
+  PORT=$2
+fi
+
+
+if [ -e ${BASEDIR}/libexec/mysqld ]; then
+MYSQLD=${BASEDIR}/libexec/mysqld
+else
+MYSQLD=${BASEDIR}/bin/mysqld
+fi
+
+mkdir -pv $LOG_DIR
+
+# --skip-locking \
+
+${MYSQLD} \
+ --no-defaults \
+ --basedir="$BASEDIR" \
+ --datadir="$DATADIR" \
+ --port=$PORT \
+ --general-log-file=$LOG_DIR/mysqld.log \
+ --pid-file=mysqld-${PORT}.pid \
+ --socket=mysql-${PORT}.sock \
+ --read_buffer_size=1024K \
+ --read_rnd_buffer_size=1024K \
+ --sort_buffer_size=4096K \
+ --myisam_sort_buffer_size=16M \
+ --table_cache=256 \
+ --key_buffer=64M \
+ --tmp_table_size=64M \
+ --net_buffer_length=16K \
+ --max_heap_table_size=128M \
+ --max_allowed_packet=64M \
+ --thread_cache_size=16 \
+ --innodb_file_per_table \
+ --innodb_locks_unsafe_for_binlog=1 \
+ --innodb_buffer_pool_size=512M \
+ --innodb_log_file_size=32M \
+ --innodb_flush_log_at_trx_commit=2 \
+ --innodb_support_xa=0 \
+ --innodb_max_dirty_pages_pct=20 &
+
+sleep 3
+ps auxwww | grep -i "^USER\|mysqld" | grep -v grep | grep -v start-mysqld
