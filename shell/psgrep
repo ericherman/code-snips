@@ -1,0 +1,2 @@
+#ps auxwww | grep $1 | grep -v grep
+ps auxwww | grep -i "^USER\|$1" | grep -v grep
