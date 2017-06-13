@@ -1,0 +1,2 @@
+#!/bin/sh
+perl -c $1 && perltidy $1 && mv $1 $1~ && mv $1.tdy $1
