@@ -1,0 +1,16 @@
+#!/bin/bash
+if [ -z "$2" ]; then
+  export USER=$(cat ~/.ssh/twitter_login)
+else
+  export USER=${2}
+fi
+
+# trim leatding and trailing whitespace & compress remaining whitespace
+TWEET=$(echo ${1});
+LEN=$(echo "$TWEET" | wc -m);
+if (( $LEN > 140 )); then
+   echo "Text has length $LEN"
+   exit 1
+fi
+
+curl -u ${USER} -d status="${TWEET}" http://twitter.com/statuses/update.xml
