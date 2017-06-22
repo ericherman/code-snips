@@ -1,0 +1,6 @@
+#!/bin/bash
+BASE=$(basename -s .zip $1)
+mkdir -v $BASE &&
+pushd $BASE &&
+unzip ../${BASE}.zip &&
+popd
