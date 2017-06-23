@@ -18,26 +18,42 @@ however, nothing for 64 bit ... this #defines these:
 
 #include <stdio.h>
 #include <stdint.h>
+
+#if HAVE_BYTESWAP_H
 #include <byteswap.h>
-#include <arpa/inet.h>
-
-#define bswap_64_32x2(x) \
-	((((uint64_t)bswap_32((uint32_t)x) << 32) | \
-	((uint64_t)bswap_32((uint32_t)(x >> 32)))))
-
-#if HAVE_BSWAP_64
-#define Bswap_64(x) bswap_64(x)
-#else
-#define Bswap_64(x) bswap_64_32x2(x)
 #endif
 
-#if HAVE_HTOBE64
+#if HAVE_BSWAP_32
+#define Bswap_32(x) bswap_32(x)
+#endif
+
+#if HAVE_BSWAP_64
+#define Bswap_64 bswap_64
+#endif
+
+#define Bswap_32_constant(x) \
+     ((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >>  8) | \
+      (((x) & 0x0000ff00) <<  8) | (((x) & 0x000000ff) << 24))
+
+#ifndef Bswap_32
+#define Bswap_32 Bswap_32_constant
+#endif
+
+#define Bswap_64_32x2(x) \
+        ((((uint64_t)Bswap_32((uint32_t)x) << 32) | \
+        ((uint64_t)Bswap_32((uint32_t)(x >> 32)))))
+
+#ifndef Bswap_64
+#define Bswap_64 Bswap_64_32x2
+#endif
+
+#if HAVE_ENDIAN_H
 #include <endian.h>
 #define htonll(x) htobe64(x)
 #define ntohll(x) be64toh(x)
 #else
-#define htonll(x) ((htonl(1) == 1) ? x : Bswap_64(x))
-#define ntohll(x) ((ntohl(1) == 1) ? x : Bswap_64(x))
+#define htonll(x) ((Bswap_32_constant(1) == 1) ? x : Bswap_64(x))
+#define ntohll(x) ((Bswap_32_constant(1) == 1) ? x : Bswap_64(x))
 #endif
 
 int main(int argc, char *argv[])
@@ -45,7 +61,7 @@ int main(int argc, char *argv[])
 	uint64_t host_le, netw_be;
 	uint64_t actual1, actual2;
 
-	if (htonl(1) == 1) {
+	if (Bswap_32_constant(1) == 1) {
 		fprintf(stderr, "this expects a little endian host\n");
 	}
 
