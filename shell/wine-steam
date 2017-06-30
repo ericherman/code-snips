@@ -1,0 +1,13 @@
+#!/bin/bash
+
+WINEPREFIX="/home/eric/.local/share/wineprefixes/steam" \
+WINEDEBUG=-all \
+wine \
+/home/eric/.local/share/wineprefixes/steam/drive_c/apps/Steam/Steam.exe \
+-console -dxlevel 90 -width 1280 -height 1024
+# -console -dxlevel 90 -width 1920 -height 1200
+
+#env \
+#WINEPREFIX="/home/eric/.local/share/wineprefixes/steam" \
+#wine C:\\windows\\command\\start.exe /Unix \
+# /home/eric/.local/share/wineprefixes/steam/dosdevices/c:/users/Public/Desktop/Steam.lnk
