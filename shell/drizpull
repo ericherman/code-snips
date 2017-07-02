@@ -1,0 +1,9 @@
+#!/bin/bash
+pushd ${HOME}/src/drizzle
+for file in *;
+do
+  pushd $file
+  bzr pull
+  popd
+done
+popd

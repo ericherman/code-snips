@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "ac power?"
+        if [ -d /proc/acpi/ac_adapter ]
+        then
+            if grep -q on-line /proc/acpi/ac_adapter/*/state
+            then
+                ac_power=TRUE
+            fi
+        else
+            ac_power=TRUE
+        fi
+echo ac_power = $ac_power;
+if [ "$ac_power" != "TRUE" ]; then
+	exit 1;
+fi

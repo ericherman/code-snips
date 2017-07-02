@@ -1,0 +1,20 @@
+#!/bin/bash
+echo "called" >> /tmp/foocommand.log
+
+if [ -z "$1" ]; then
+  echo -e "\nUsage: `basename $0` arg 1 [arg 2] [etc.]..."
+  echo "usage" >> /tmp/foocommand.log
+  exit 1
+fi
+
+echo "Found $# Command-Line Arguments"
+
+idx=1
+for arg in "$@"
+do
+  echo "Arg[$idx] = ${arg}"
+  echo "Arg[$idx] = ${arg}" >> /tmp/foocommand.log
+  let "idx += 1"
+done
+
+exit 0

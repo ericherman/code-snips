@@ -1,0 +1,127 @@
+#!/bin/bash
+# export LC_ALL=C
+
+# Simple script to list version numbers of critical development tools
+
+if [ -e /usr/bin/arch ]; then
+  echo arch `arch`
+fi
+echo "uname -m " `uname -m`
+
+echo MACHTYPE=${MACHTYPE}
+if [ -e /proc/cpuinfo ]; then
+  cat /proc/cpuinfo | grep 'system type' | head -n1 | cut -d":" -f2
+  cat /proc/cpuinfo | grep 'cpu model\|model name' | head -n1 | cut -d":" -f2
+else
+  echo "no /proc/cpuinfo"
+fi
+if [ -e /proc/version ]; then
+  cat /proc/version
+else
+  uname -a
+fi
+echo ""
+
+echo "/usr/bin/cc -> `readlink -f /usr/bin/cc`"
+gcc --version | head -n1
+echo "/usr/bin/c++ -> `readlink -f /usr/bin/c++`"
+g++ --version | head -n1
+LIBC_SO=/lib/libc.so.6
+if [ -e /lib/libc/so.6 ]; then
+   LIBC_SO=/lib/libc/so.6
+elif [ -e /lib/i386-linux-gnu/libc.so.6 ]; then
+   LIBC_SO=/lib/i386-linux-gnu/libc.so.6
+fi
+echo "$LIBC_SO : `$LIBC_SO | head -n1 | cut -d"," -f1`"
+
+echo ""
+DIR="/tmp/$USER"
+mkdir -p $DIR
+FILE="${DIR}/dummy"
+echo 'int main(void){return 0;}' > ${FILE}.c && gcc -o ${FILE} ${FILE}.c
+if [ -x ${FILE} ]; then
+  echo "gcc Compilation OK";
+  rm -f ${FILE}.c ${FILE}
+else
+  echo "gcc -o ${FILE} ${FILE}.c failed";
+fi
+
+FILE="$DIR/hello"
+cat > ${FILE}.c <<EOS
+#include <stdio.h>
+int main(int argc, char *argv[])
+{
+	printf("hello, world.\n");
+	return 0;
+}
+EOS
+gcc -o ${FILE} ${FILE}.c
+file ${FILE} | cut -d":" -f2
+readelf -l ${FILE} | grep ': /lib'
+if [ -x ${FILE} ]; then
+  HELLO=$(${FILE});
+  if [[ $HELLO = "hello, world." ]]
+  then
+    echo "execution OK";
+    rm -f ${FILE}.c ${FILE}
+  else
+    echo "gcc compiled ${FILE} execution failed";
+    echo "result was '$HELLO'";
+  fi
+else
+    echo "gcc -o ${FILE} ${FILE}.c failed";
+fi
+echo ""
+
+as --version | head -n1
+autoconf --version | head -n1
+automake --version 2>/dev/null | head -n1
+autopoint --version 2>&1 | head -n1
+bash --version | head -n1
+echo "/bin/sh -> `readlink -f /bin/sh`"
+bison --version | head -n1
+if [ -e /usr/bin/yacc ]; then
+  echo "/usr/bin/yacc -> `readlink -f /usr/bin/yacc`";
+else
+  echo "yacc not found";
+fi
+bzip2 --version 2>&1 < /dev/null | head -n1 | cut -d" " -f1,6-
+clang --version 2>&1 | head -n1
+echo -n "Coreutils: "; chown --version | head -n1 | cut -d")" -f2
+diff --version | head -n1
+docbook2man --version 2>&1 | head -n1
+find --version | head -n1
+flex --version | head -n1
+gawk --version | head -n1
+if [ -e /usr/bin/awk ]; then
+  echo "/usr/bin/awk -> `readlink -f /usr/bin/awk`";
+else
+  echo "awk not found";
+fi
+gettext --version 2>&1 | head -n1
+gperf --version 2>&1 | head -n1
+grep --version | head -n1
+gzip --version | head -n1
+ld --version | head -n1
+echo -n "libpng: "; /usr/bin/libpng-config --version || echo "(no libpng)"
+libtool --version 2>&1 | head -n1
+m4 --version | head -n1
+make --version | head -n1
+mtdev: $(find /usr/lib /usr/local/lib /lib -name 'mtdev.pc' -exec grep Version \{} \; 2>/dev/null | sort -r | head -n1)
+patch --version | head -n1
+echo Perl `perl -V:version`
+echo "pkg-config: $(pkg-config --version 2>/dev/null)" ||
+     echo "(no pkg-config)" | head -n1
+python --version 2>&1 | head -n1
+ruby --version 2>/dev/null || echo "(no ruby)" | head -n1 | cut -d" " -f1,2
+sed --version | head -n1
+grep "TALLOC_VERSION" \
+  $( find /usr/include /usr/local/include -name talloc.h) \
+  || echo "(no talloc)"
+tar --version | head -n1
+echo "Texinfo: `makeinfo --version | head -n1`"
+echo "tic: `tic -V`"
+xz --version | head -n1
+grep "define\s*ZLIB_VERSION\s" \
+   $(find /usr/include /usr/local/include -name zlib.h ) \
+   || echo "(no zib)"
