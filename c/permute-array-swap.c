@@ -4,7 +4,7 @@
 
 /*
 gcc -std=c89 -Wall -Wextra -Wpedantic -Werror \
-    -o permute-array permute-array.c
+    -o permute-array-swap permute-array-swap.c
 */
 
 #define MAKE_VALGRIND_HAPPY 0
