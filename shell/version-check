@@ -31,6 +31,8 @@ if [ -e /lib/libc/so.6 ]; then
    LIBC_SO=/lib/libc/so.6
 elif [ -e /lib/i386-linux-gnu/libc.so.6 ]; then
    LIBC_SO=/lib/i386-linux-gnu/libc.so.6
+elif [ -e /lib/x86_64-linux-gnu/libc.so.6 ]; then
+   LIBC_SO=/lib/x86_64-linux-gnu/libc.so.6
 fi
 echo "$LIBC_SO : `$LIBC_SO | head -n1 | cut -d"," -f1`"
 
@@ -116,7 +118,8 @@ python --version 2>&1 | head -n1
 ruby --version 2>/dev/null || echo "(no ruby)" | head -n1 | cut -d" " -f1,2
 sed --version | head -n1
 grep "TALLOC_VERSION" \
-  $( find /usr/include /usr/local/include -name talloc.h) \
+  $( find /usr/include /usr/local/include -name talloc.h ) \
+     /usr/include/stdio.h \
   || echo "(no talloc)"
 tar --version | head -n1
 echo "Texinfo: `makeinfo --version | head -n1`"
@@ -124,4 +127,5 @@ echo "tic: `tic -V`"
 xz --version | head -n1
 grep "define\s*ZLIB_VERSION\s" \
    $(find /usr/include /usr/local/include -name zlib.h ) \
+     /usr/include/stdio.h \
    || echo "(no zib)"
