@@ -2,6 +2,10 @@
 #include <stdlib.h>		/* malloc, free */
 #include <string.h>		/* memmove, memcpy */
 
+#ifndef CHAR_BIT
+#define CHAR_BIT 8
+#endif
+
 /*
 gcc -std=c89 -Wall -Wextra -Wpedantic -Werror \
     -o permute-array-lexicographic permute-array-lexicographic.c
@@ -12,12 +16,13 @@ gcc -std=c89 -Wall -Wextra -Wpedantic -Werror \
 #define MAKE_VALGRIND_HAPPY 0
 
 size_t factorial(size_t n);
+unsigned safe_mul_size_t(size_t lhs, size_t rhs, size_t *result);
 
 /* allows caller to fetch a specific lexicographic zero-indexed permutation */
 void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 	      size_t elem_size, void *elem_swap_buf)
 {
-	size_t i, idx, remainder, num_perms, choice_idx;
+	size_t i, size, idx, remainder, num_perms, choice_idx;
 	unsigned char *d;
 	void *from, *to;
 
@@ -37,6 +42,11 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 
 	for (i = 0; idx && i < len - 1; ++i) {
 		num_perms = factorial(len - i - 1);
+		if (!num_perms) {
+			fprintf(stderr, "factorial(%lu) overflows\n",
+				(unsigned long)(len - i - 1));
+			return NULL;
+		}
 		choice_idx = idx / num_perms;
 		remainder = idx % num_perms;
 		to = d + (i * elem_size);
@@ -44,11 +54,11 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 		if (to != from) {
 			memcpy(elem_swap_buf, to, elem_size);
 			memcpy(to, from, elem_size);
-			if ((i < (len - 2))) {
+			if (i < (len - 2)) {
 				to = d + ((i + 2) * elem_size);
 				from = d + ((i + 1) * elem_size);
-				memmove(to, from,
-					(elem_size * (choice_idx - 1)));
+				size = (elem_size * (choice_idx - 1));
+				memmove(to, from, size);
 			}
 			to = d + ((i + 1) * elem_size);
 			memcpy(to, elem_swap_buf, elem_size);
@@ -59,16 +69,91 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 	return dest;
 }
 
+unsigned safe_mul_size_t(size_t lhs, size_t rhs, size_t *result)
+{
+	const size_t ulong_bits = (sizeof(size_t) * CHAR_BIT);
+	const size_t halfsize_max = (1ul << (ulong_bits / 2)) - 1ul;
+
+	size_t lhs_hi, lhs_lo, rhs_hi, rhs_lo;
+	size_t lowbits, midbits1, midbits2, midbits, product;
+	unsigned overflowed;
+
+	lhs_hi = lhs >> ulong_bits / 2;
+	lhs_lo = lhs & halfsize_max;
+	rhs_hi = rhs >> ulong_bits / 2;
+	rhs_lo = rhs & halfsize_max;
+
+	lowbits = lhs_lo * rhs_lo;
+	if (!(lhs_hi || rhs_hi)) {
+		*result = lowbits;
+		return 0;
+	}
+	overflowed = lhs_hi && rhs_hi;
+	midbits1 = lhs_lo * rhs_hi;
+	midbits2 = lhs_hi * rhs_lo;
+	midbits = midbits1 + midbits2;
+	overflowed = overflowed || midbits < midbits1 || midbits > halfsize_max;
+	product = lowbits + (midbits << ulong_bits / 2);
+	overflowed = overflowed || product < lowbits;
+
+	*result = product;
+	return overflowed;
+}
+
 size_t factorial(size_t n)
 {
-	size_t result = n;
-	if (n < 2) {
-		return 1;
+	size_t result, last_result;
+	unsigned overflow;
+
+	overflow = 0;
+	switch (n) {
+	case 0:
+		result = 1UL;
+		break;
+	case 1:
+		result = 1UL;
+		break;
+	case 2:
+		result = 2UL;
+		break;
+	case 3:
+		result = 6UL;
+		break;
+	case 4:
+		result = 24UL;
+		break;
+	case 5:
+		result = 120UL;
+		break;
+	case 6:
+		result = 720UL;
+		break;
+	case 7:
+		result = 5040UL;
+		break;
+	case 8:
+		result = 40320UL;
+		break;
+	case 9:
+		result = 362880UL;
+		break;
+	case 10:
+		result = 3628800UL;
+		break;
+	case 11:
+		result = 39916800UL;
+		break;
+	case 12:
+		result = 479001600UL;
+		break;
+	default:
+		result = n;
+		do {
+			last_result = result;
+			overflow = safe_mul_size_t(last_result, --n, &result);
+		} while ((!overflow) && (n > 1));
 	}
-	do {
-		result *= --n;
-	} while (n > 1);
-	return result;
+	return overflow ? 0 : result;
 }
 
 static void print_ints(int *a, size_t len)
@@ -118,6 +203,10 @@ int main(int argc, char *argv[])
 	printf("---------\n");
 
 	if (permutation_number < 0) {
+		if (!factorial(len)) {
+			fprintf(stderr, "factorial(%lu) overflows\n",
+				(unsigned long)len);
+		}
 		for (i = 0; i < factorial(len); ++i) {
 			permute(i, ints, permuted_ints, len, elem_size, &x);
 			print_ints(permuted_ints, len);
