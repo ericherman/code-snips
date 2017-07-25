@@ -87,7 +87,7 @@ sizeof(unsigned long long):    8 bytes      18446744073709551615 max
 
 int main(void)
 {
-	printf("%26s:  %3lu bits\n", "CHAR_BIT", CHAR_BIT);
+	printf("%26s:  %3lu bits\n", "CHAR_BIT", (unsigned long)CHAR_BIT);
 	printf("%26s: %4d (%ssigned)\n", "CHAR_MIN", (int)CHAR_MIN,
 	       (CHAR_MIN == 0 ? "un" : ""));
 
