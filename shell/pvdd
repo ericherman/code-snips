@@ -3,6 +3,11 @@
 IN_FILE=$1
 OUT_FILE=$2
 
+if [ "_${IN_FILE}_" == "__" ]; then
+  echo "USAGE: $0 /path/to/infile /path/to/outfile [bloksize_bytes]"
+  exit 1
+fi;
+
 # Any block size is probably good enough;
 # experimenting on my own systems has not
 # shown a great difference between various
