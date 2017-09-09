@@ -13,16 +13,18 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define debugf(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
+/* prototypes */
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
 
-#ifndef _SINE_LOOP_LIMIT
-#define _SINE_LOOP_LIMIT_NEEDS_UNDEF
-#define _SINE_LOOP_LIMIT 25
+#ifndef _Sine_loop_limit
+#define _Sine_loop_limit 25
+#define _Sine_loop_limit_needs_undef
 #endif
+
 double sine_taylor(double x)
 {
-	double y, s, t, b;
+	double y, s, t, b, v;
 	size_t n;
 
 	if (isfinite(x) == 0) {
@@ -31,25 +33,27 @@ double sine_taylor(double x)
 
 	debugf("sine_taylor(%f)\n", x);
 	y = 0;
-	for (n = 0; n <= _SINE_LOOP_LIMIT; ++n) {
-		debugf("\tn=%lu\n", (unsigned long)n);
+	for (n = 0; n <= _Sine_loop_limit; ++n) {
 		s = (n % 2 == 0) ? 1.0 : -1.0;
-		debugf("\ts=%f\n", s);
 		t = _pow(x, (2 * n) + 1);
-		debugf("\tt=%f\n", t);
 		b = _factorial((2 * n) + 1);
+		v = ((s * t) / b);
+		y = y + v;
+
+		debugf("\tn=%lu\n", (unsigned long)n);
+		debugf("\ts=%f\n", s);
+		debugf("\tt=%f\n", t);
 		debugf("\tb=%f\n", b);
-		y = y + ((s / b) * t);
+		debugf("\tv=%f\n\n", v);
 		debugf("\ty=%f\n\n", y);
 	}
-	debugf("\n");
-	debugf("now, how to convert to radians?\n");
+	debugf("now, how to convert %f to radians?\n", y);
 	return y;
 }
 
-#ifdef _SINE_LOOP_LIMIT_NEEDS_UNDEF
-#undef _SINE_LOOP_LIMIT_NEEDS_UNDEF
-#undef _SINE_LOOP_LIMIT
+#ifdef _Sine_loop_limit_needs_undef
+#undef _Sine_loop_limit_needs_undef
+#undef _Sine_loop_limit
 #endif
 
 static double _factorial(uint64_t n)
