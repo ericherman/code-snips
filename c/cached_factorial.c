@@ -4,7 +4,7 @@
    XXX: This is total nonsense, don't take this seriously
 
 $ gcc -std=c89 -Wall -Wextra -Wpedantic -Werror \
-    -o cached__factorial cached__factorial.c
+    -o cached_factorial cached_factorial.c
 
 $ ./cached__factorial 1
 

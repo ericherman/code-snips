@@ -17,23 +17,22 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define debugf(...) ((void)(0))
 #endif
 
-/* prototypes */
-static double _factorial(uint64_t n);
-static double _pow(double x, uint64_t p);
-static double _rad_to_plus_minus_pi(double x);
-static int _float_approx_eq(double d1, double d2);
-
 #ifndef _Sine_loop_limit
-#define _Sine_loop_limit 25U
+#define _Sine_loop_limit 100U
 #endif
 
 #ifndef _Sine_min_loops
-#define _Sine_min_loops 5
+#define _Sine_min_loops 5U
 #endif
 
 #ifndef _Float_eq_tolerance
 #define _Float_eq_tolerance 0.000000001
 #endif
+
+/* prototypes */
+static double _factorial(uint64_t n);
+static double _pow(double x, uint64_t p);
+static int _float_approx_eq(double d1, double d2);
 
 double sine_taylor(double radians)
 {
@@ -49,7 +48,7 @@ double sine_taylor(double radians)
 		return NAN;
 	}
 
-	x = _rad_to_plus_minus_pi(radians);
+	x = fmod(radians, 2 * M_PI);
 
 	last = -DBL_MAX;
 	y = 0;
@@ -78,12 +77,11 @@ static double _factorial(uint64_t n)
 {
 	double result;
 
-	result = n;
-
 	if (n < 2) {
-		return 1;
+		return 1.0;
 	}
 
+	result = n;
 	do {
 		result *= --n;
 	} while (n > 1);
@@ -100,45 +98,6 @@ static double _pow(double x, uint64_t p)
 		d *= x;
 	}
 	return d;
-}
-
-static double _rad_to_plus_minus_pi(double r)
-{
-	double a, u, x, t, m;
-
-	debugf("r = %f\n", r);
-	if (r > M_PI) {
-		if (r > 100000000000.0) {
-			debugf("r is *very* large\n");
-		}
-		t = r / M_PI;
-		u = floor(t);
-		m = (u * M_PI);
-		a = r - m;
-		debugf("t = %f\n", t);
-		debugf("u = %f\n", u);
-		debugf("m = %f\n", m);
-		debugf("a = %f\n", a);
-		x = ((u / 2) == floor(u / 2)) ? a : -a;
-	} else if (r < -M_PI) {
-		if (r < -100000000000) {
-			debugf("r is *very* large\n");
-		}
-		t = r / -M_PI;
-		u = floor(t);
-		m = (u * M_PI);
-		a = r + m;
-		debugf("t = %f\n", t);
-		debugf("u = %f\n", u);
-		debugf("m = %f\n", m);
-		debugf("a = %f\n", a);
-		x = ((u / 2) == floor(u / 2)) ? a : -a;
-	} else {
-		x = r;
-	}
-	debugf("x = %f\n", x);
-
-	return x;
 }
 
 static int _float_approx_eq_t(double d1, double d2, double tolerance)
