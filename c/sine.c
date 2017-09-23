@@ -122,12 +122,12 @@ double cosine_taylor(double radians)
 {
 	double x, tolerance;
 
-	if (radians > 2 * M_PI || radians < -2 * M_PI) {
-		x = fmod(radians, 2 * M_PI);
-	} else {
-		x = radians;
-	}
 	if (_Trig_check_for_known) {
+		if (radians > 2 * M_PI || radians < -2 * M_PI) {
+			x = fmod(radians, 2 * M_PI);
+		} else {
+			x = radians;
+		}
 		tolerance = 0.0000001;
 		if (_float_approx_eq(x, 0, tolerance)) {
 			return 1;
@@ -149,19 +149,19 @@ double cosine_taylor(double radians)
 			return 1;
 		}
 	}
-	return sine_taylor((M_PI / 2) - x);
+	return sine_taylor((M_PI / 2) - radians);
 }
 
 double tangent_taylor(double radians)
 {
 	double x, tolerance;
 
-	if (radians > 2 * M_PI || radians < -2 * M_PI) {
-		x = fmod(radians, 2 * M_PI);
-	} else {
-		x = radians;
-	}
 	if (_Trig_check_for_known) {
+		if (radians > 2 * M_PI || radians < -2 * M_PI) {
+			x = fmod(radians, 2 * M_PI);
+		} else {
+			x = radians;
+		}
 		tolerance = 0.0000001;
 		if (_float_approx_eq(x, 0, tolerance)) {
 			return 0.0;
@@ -183,7 +183,7 @@ double tangent_taylor(double radians)
 			return 0;
 		}
 	}
-	return sine_taylor(x) / cosine_taylor(x);
+	return sine_taylor(radians) / cosine_taylor(radians);
 }
 
 double cotangent_taylor(double radians)
@@ -282,13 +282,8 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 	return floats_differ;
 }
 
-int compare_sine_functions(double d, double tolerance, int verbose)
-{
-	return _compare_function(d, tolerance, verbose, sine_taylor,
-				 "sine_taylor", sin, "   libc sin");
-}
-
-int compare_trig_functions(double d, double tolerance, int verbose)
+int compare_trig_functions(double d, double tolerance, int verbose,
+			   int test_cosine, int test_tangent)
 {
 	int errors;
 	errors = 0;
@@ -297,12 +292,12 @@ int compare_trig_functions(double d, double tolerance, int verbose)
 	    _compare_function(d, tolerance, verbose, sine_taylor, "sine_taylor",
 			      sin, "   libc sin");
 
-	if (TEST_COSINE) {
+	if (test_cosine) {
 		errors +=
 		    _compare_function(d, tolerance, verbose, cosine_taylor,
 				      "cosine_taylor", cos, "     libc cos");
 	}
-	if (TEST_TANGENT) {
+	if (test_tangent) {
 		errors +=
 		    _compare_function(d, tolerance, verbose, tangent_taylor,
 				      "tangent_taylor", tan, "      libc tan");
@@ -321,7 +316,9 @@ int main(int argc, char **argv)
 		tolerance = 0.00001;
 		sscanf(argv[1], "%lf", &d);
 		verbose = 1;
-		total_errors = compare_sine_functions(d, tolerance, verbose);
+		total_errors =
+		    compare_trig_functions(d, tolerance, verbose, TEST_COSINE,
+					   TEST_TANGENT);
 	} else {
 		total_errors = 0;
 		verbose = 0;
@@ -334,8 +331,11 @@ int main(int argc, char **argv)
 		for (i = 0; d <= to; ++i) {
 			d = (i * (M_PI / 180));
 			errors +=
-			    compare_trig_functions(-d, tolerance, verbose);
-			errors += compare_trig_functions(d, tolerance, verbose);
+			    compare_trig_functions(-d, tolerance, verbose,
+						   TEST_COSINE, TEST_TANGENT);
+			errors +=
+			    compare_trig_functions(d, tolerance, verbose,
+						   TEST_COSINE, TEST_TANGENT);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       2UL * (unsigned long)i, from, to);
@@ -345,7 +345,9 @@ int main(int argc, char **argv)
 		from = -1000;
 		to = 1000;
 		for (i = 0, d = from; d <= to; d += 1.0, ++i) {
-			errors += compare_trig_functions(d, tolerance, verbose);
+			errors +=
+			    compare_trig_functions(d, tolerance, verbose,
+						   TEST_COSINE, TEST_TANGENT);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       (unsigned long)i, from, to);
@@ -355,7 +357,9 @@ int main(int argc, char **argv)
 		to = 1 + (M_PI * M_PI);
 		from = -to;
 		for (i = 0, d = from; d <= to; d += 0.00001, ++i) {
-			errors += compare_trig_functions(d, tolerance, verbose);
+			errors +=
+			    compare_trig_functions(d, tolerance, verbose,
+						   TEST_COSINE, TEST_TANGENT);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       (unsigned long)i, from, to);
@@ -369,13 +373,13 @@ int main(int argc, char **argv)
 			d = from;
 			for (i = 0; d <= to && i < 4294967295UL; ++i) {
 				errors +=
-				    compare_sine_functions(d, tolerance,
-							   verbose);
+				    compare_trig_functions(d, tolerance,
+							   verbose, 0, 0);
 				d = (double)nextafterf((float)d, INFINITY);
 			}
-			printf
-			    ("%d errors testing %lu values from %f to %f (sine only)\n",
-			     errors, (unsigned long)i, from, to);
+			printf("%d errors testing %lu values from %f to %f"
+			       " (sine only)\n", errors, (unsigned long)i, from,
+			       to);
 			total_errors += errors;
 		}
 	}
