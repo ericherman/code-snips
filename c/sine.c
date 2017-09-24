@@ -26,14 +26,11 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define _Trig_Taylor_min_loops 5U
 #endif
 
-#ifndef _Trig_check_for_known
-#define _Trig_check_for_known 0
-#endif
-
 /* prototypes */
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
 static int _float_approx_eq(double d1, double d2, double tolerance);
+static double _mod_unit_circle_radians(double radians);
 
 double sine_taylor(double radians)
 {
@@ -50,34 +47,7 @@ double sine_taylor(double radians)
 		return NAN;
 	}
 
-	if (radians > 2 * M_PI || radians < -2 * M_PI) {
-		x = fmod(radians, 2 * M_PI);
-	} else {
-		x = radians;
-	}
-
-	if (_Trig_check_for_known) {
-		tolerance = 0.0000001;
-		if (_float_approx_eq(x, 0.0, tolerance)) {
-			return 0;
-		} else if (_float_approx_eq(x, M_PI / 6, tolerance)) {
-			return 0.5;
-		} else if (_float_approx_eq(x, M_PI_2, tolerance)) {
-			return 1.0;
-		} else if (_float_approx_eq(x, (5 * M_PI / 6), tolerance)) {
-			return 0.5;
-		} else if (_float_approx_eq(x, M_PI, tolerance)) {
-			return 0;
-		} else if (_float_approx_eq(x, (7 * M_PI) / 6, tolerance)) {
-			return -0.5;
-		} else if (_float_approx_eq(x, 3 * M_PI_2, tolerance)) {
-			return -1.0;
-		} else if (_float_approx_eq(x, (11 * M_PI / 6), tolerance)) {
-			return -0.5;
-		} else if (_float_approx_eq(x, 2 * M_PI, tolerance)) {
-			return 0;
-		}
-	}
+	x = _mod_unit_circle_radians(radians);
 
 	last_y = -DBL_MAX;
 	y = 0;
@@ -109,69 +79,11 @@ double sine_taylor(double radians)
 
 double cosine_taylor(double radians)
 {
-	double x, tolerance;
-
-	if (_Trig_check_for_known) {
-		if (radians > 2 * M_PI || radians < -2 * M_PI) {
-			x = fmod(radians, 2 * M_PI);
-		} else {
-			x = radians;
-		}
-		tolerance = 0.0000001;
-		if (_float_approx_eq(x, 0, tolerance)) {
-			return 1;
-		} else if (_float_approx_eq(x, M_PI / 3, tolerance)) {
-			return 0.5;
-		} else if (_float_approx_eq(x, M_PI_2, tolerance)) {
-			return 0.0;
-		} else if (_float_approx_eq(x, (2 * M_PI) / 3, tolerance)) {
-			return -0.5;
-		} else if (_float_approx_eq(x, M_PI, tolerance)) {
-			return -1.0;
-		} else if (_float_approx_eq(x, (4 * M_PI) / 3, tolerance)) {
-			return -0.5;
-		} else if (_float_approx_eq(x, 3 * M_PI_2, tolerance)) {
-			return 0.0;
-		} else if (_float_approx_eq(x, (5 * M_PI) / 3, tolerance)) {
-			return 0.5;
-		} else if (_float_approx_eq(x, 2 * M_PI, tolerance)) {
-			return 1;
-		}
-	}
 	return sine_taylor((M_PI / 2) - radians);
 }
 
 double tangent_taylor(double radians)
 {
-	double x, tolerance;
-
-	if (_Trig_check_for_known) {
-		if (radians > 2 * M_PI || radians < -2 * M_PI) {
-			x = fmod(radians, 2 * M_PI);
-		} else {
-			x = radians;
-		}
-		tolerance = 0.0000001;
-		if (_float_approx_eq(x, 0, tolerance)) {
-			return 0.0;
-		} else if (_float_approx_eq(x, M_PI / 4, tolerance)) {
-			return 1.0;
-		} else if (_float_approx_eq(x, M_PI_2, tolerance)) {
-			return INFINITY;
-		} else if (_float_approx_eq(x, (3 * M_PI) / 4, tolerance)) {
-			return -1.0;
-		} else if (_float_approx_eq(x, M_PI, tolerance)) {
-			return 0.0;
-		} else if (_float_approx_eq(x, (5 * M_PI) / 4, tolerance)) {
-			return 1.0;
-		} else if (_float_approx_eq(x, 3 * M_PI_2, tolerance)) {
-			return INFINITY;
-		} else if (_float_approx_eq(x, (7 * M_PI) / 4, tolerance)) {
-			return -1;
-		} else if (_float_approx_eq(x, 2 * M_PI, tolerance)) {
-			return 0;
-		}
-	}
 	return sine_taylor(radians) / cosine_taylor(radians);
 }
 
@@ -188,6 +100,20 @@ double secant_taylor(double radians)
 double cosecant_taylor(double radians)
 {
 	return 1 / sine_taylor(radians);
+}
+
+/* shift value to the unit circle */
+/* this is, of course, a source of some error */
+static double _mod_unit_circle_radians(double radians)
+{
+	double x;
+
+	if (radians > 2 * M_PI || radians < -2 * M_PI) {
+		x = fmod(radians, 2 * M_PI);
+	} else {
+		x = radians;
+	}
+	return x;
 }
 
 static double _factorial(uint64_t n)
