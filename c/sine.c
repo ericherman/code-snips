@@ -8,18 +8,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #include <stdint.h>
 #include <errno.h>
 #include <float.h>
-
-#ifndef TEST_COSINE
-#define TEST_COSINE 1
-#endif
-
-#ifndef TEST_TANGENT
-#define TEST_TANGENT 0
-#endif
-
-#ifndef EXHAUSTIVE_FLOAT_TEST
-#define EXHAUSTIVE_FLOAT_TEST 0
-#endif
+#include <getopt.h>
 
 #ifdef DEBUG
 #define debugf(...) fprintf(stderr, __VA_ARGS__)
@@ -283,15 +272,16 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 }
 
 int compare_trig_functions(double d, double tolerance, int verbose,
-			   int test_cosine, int test_tangent)
+			   int test_sine, int test_cosine, int test_tangent)
 {
 	int errors;
 	errors = 0;
 
-	errors +=
-	    _compare_function(d, tolerance, verbose, sine_taylor, "sine_taylor",
-			      sin, "   libc sin");
-
+	if (test_sine) {
+		errors +=
+		    _compare_function(d, tolerance, verbose, sine_taylor,
+				      "sine_taylor", sin, "   libc sin");
+	}
 	if (test_cosine) {
 		errors +=
 		    _compare_function(d, tolerance, verbose, cosine_taylor,
@@ -306,23 +296,137 @@ int compare_trig_functions(double d, double tolerance, int verbose,
 	return errors;
 }
 
+struct sine_options_s {
+	int help;
+	int verbose;
+	double test_double;
+	int test_specific;
+	int test_sin;
+	int test_cos;
+	int test_tan;
+	int exhaustive_sin;
+	int exhaustive_cos;
+	int exhaustive_tan;
+};
+
+static void print_help(FILE *stream, const char *prog_name)
+{
+	fprintf(stream, "Usage: %s [option...]", prog_name);
+	fprintf(stream, "Options:\n");
+	fprintf(stream, "\t-h, --help\n");
+	fprintf(stream, "\t-v, --verbose\n");
+	fprintf(stream, "\t-d?, --double=?\t\ttest one specific value\n");
+	fprintf(stream, "\t-s?, --test_sin=?\tdefaults to 1\n");
+	fprintf(stream, "\t-c?, --test_cos=?\tdefaults to 1\n");
+	fprintf(stream, "\t-t?, --test_tan=?\tdefaults to 0\n");
+	fprintf(stream,
+		"\t-e?, --exhaustive_sin=?\tdefaults to 0"
+		" (takes about 30 minutes)\n");
+	fprintf(stream, "\t-o?, --exhaustive_cos=?\tdefaults to 0\n");
+	fprintf(stream, "\t-a?, --exhaustive_tan=?\tdefaults to 0\n");
+}
+
+static void parse_cmdline_args(struct sine_options_s *options, int argc,
+			       char *argv[])
+{
+	int opt_char, option_index;
+
+	/* yes, optstirng is horrible */
+	const char *optstring = "hvd::s::c::t::e::o::a::";
+
+	struct option long_options[] = {
+		{"help", no_argument, 0, 'h'},
+		{"verbose", no_argument, 0, 'v'},
+		{"double", optional_argument, 0, 'd'},
+		{"test_sin", optional_argument, 0, 's'},
+		{"test_cos", optional_argument, 0, 'c'},
+		{"test_tan", optional_argument, 0, 't'},
+		{"exhaustive_sin", optional_argument, 0, 'e'},
+		{"exhaustive_cos", optional_argument, 0, 'o'},
+		{"exhaustive_tan", optional_argument, 0, 'a'},
+		{0, 0, 0, 0}
+	};
+
+	options->help = 0;
+	options->verbose = 0;
+	options->test_double = NAN;
+	options->test_specific = 0;
+	options->test_sin = 1;
+	options->test_cos = 1;
+	options->test_tan = 0;
+	options->exhaustive_sin = 0;
+	options->exhaustive_cos = 0;
+	options->exhaustive_tan = 0;
+
+	while (1) {
+		option_index = 0;
+		opt_char = getopt_long(argc, argv, optstring, long_options,
+				       &option_index);
+
+		/* Detect the end of the options. */
+		if (opt_char == -1)
+			break;
+
+		switch (opt_char) {
+		case 0:
+			break;
+		case 'h':	/* --help | -h */
+			options->help = 1;
+			break;
+		case 'v':	/* --verbose | -v */
+			options->verbose = 1;
+			break;
+		case 'd':	/* --double | -d */
+			{
+				if (optarg) {
+					sscanf(optarg, "%lf",
+					       &options->test_double);
+				}
+				options->test_specific = 1;
+				options->verbose = 1;
+				break;
+			}
+		case 's':	/* --test_sin | -s */
+			options->test_sin = optarg ? atoi(optarg) : 1;
+			break;
+		case 'c':	/* --test_cos | -c */
+			options->test_cos = optarg ? atoi(optarg) : 1;
+			break;
+		case 't':	/* --test_tan | -t */
+			options->test_tan = optarg ? atoi(optarg) : 1;
+			break;
+		case 'e':	/* --exhaustive_sin | -e */
+			options->exhaustive_sin = optarg ? atoi(optarg) : 1;
+			break;
+		case 'o':	/* --exhaustive_cos | -c */
+			options->exhaustive_cos = optarg ? atoi(optarg) : 1;
+			break;
+		case 'a':	/* --exhaustive_tan | -t */
+			options->exhaustive_tan = optarg ? atoi(optarg) : 1;
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	double d, tolerance, from, to;
-	int verbose, total_errors, errors;
+	int total_errors, errors;
 	uint64_t i;
+	struct sine_options_s options;
 
-	if (argc > 1) {
+	parse_cmdline_args(&options, argc, argv);
+
+	if (options.help) {
+		print_help(stdout, argv[0]);
+	} else if (options.test_specific) {
 		tolerance = 0.00001;
-		sscanf(argv[1], "%lf", &d);
-		verbose = 1;
 		total_errors =
-		    compare_trig_functions(d, tolerance, verbose, TEST_COSINE,
-					   TEST_TANGENT);
+		    compare_trig_functions(options.test_double, tolerance,
+					   options.verbose, options.test_sin,
+					   options.test_cos, options.test_tan);
 	} else {
 		total_errors = 0;
-		verbose = 0;
-
 		tolerance = 0.0001;
 
 		errors = 0;
@@ -331,11 +435,17 @@ int main(int argc, char **argv)
 		for (i = 0; d <= to; ++i) {
 			d = (i * (M_PI / 180));
 			errors +=
-			    compare_trig_functions(-d, tolerance, verbose,
-						   TEST_COSINE, TEST_TANGENT);
+			    compare_trig_functions(-d, tolerance,
+						   options.verbose,
+						   options.test_sin,
+						   options.test_cos,
+						   options.test_tan);
 			errors +=
-			    compare_trig_functions(d, tolerance, verbose,
-						   TEST_COSINE, TEST_TANGENT);
+			    compare_trig_functions(d, tolerance,
+						   options.verbose,
+						   options.test_sin,
+						   options.test_cos,
+						   options.test_tan);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       2UL * (unsigned long)i, from, to);
@@ -346,8 +456,11 @@ int main(int argc, char **argv)
 		to = 1000;
 		for (i = 0, d = from; d <= to; d += 1.0, ++i) {
 			errors +=
-			    compare_trig_functions(d, tolerance, verbose,
-						   TEST_COSINE, TEST_TANGENT);
+			    compare_trig_functions(d, tolerance,
+						   options.verbose,
+						   options.test_sin,
+						   options.test_cos,
+						   options.test_tan);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       (unsigned long)i, from, to);
@@ -358,14 +471,18 @@ int main(int argc, char **argv)
 		from = -to;
 		for (i = 0, d = from; d <= to; d += 0.00001, ++i) {
 			errors +=
-			    compare_trig_functions(d, tolerance, verbose,
-						   TEST_COSINE, TEST_TANGENT);
+			    compare_trig_functions(d, tolerance,
+						   options.verbose,
+						   options.test_sin,
+						   options.test_cos,
+						   options.test_tan);
 		}
 		printf("%d errors testing %lu values from %f to %f\n", errors,
 		       (unsigned long)i, from, to);
 		total_errors += errors;
 
-		if (EXHAUSTIVE_FLOAT_TEST) {
+		if (options.exhaustive_sin || options.exhaustive_cos
+		    || options.exhaustive_tan) {
 			errors = 0;
 			tolerance = 0.0000001;
 			to = (double)nextafterf((float)(2 * M_PI), INFINITY);
@@ -374,7 +491,13 @@ int main(int argc, char **argv)
 			for (i = 0; d <= to && i < 4294967295UL; ++i) {
 				errors +=
 				    compare_trig_functions(d, tolerance,
-							   verbose, 0, 0);
+							   options.verbose,
+							   options.
+							   exhaustive_sin,
+							   options.
+							   exhaustive_cos,
+							   options.
+							   exhaustive_tan);
 				d = (double)nextafterf((float)d, INFINITY);
 			}
 			printf("%d errors testing %lu values from %f to %f"
