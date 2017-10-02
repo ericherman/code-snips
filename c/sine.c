@@ -4,6 +4,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <stdint.h>
 #include <errno.h>
@@ -19,7 +20,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #endif
 
 #ifndef _Trig_Taylor_loop_limit
-#define _Trig_Taylor_loop_limit 100U
+#define _Trig_Taylor_loop_limit 400U
 #endif
 
 #ifndef _Trig_Taylor_min_loops
@@ -29,7 +30,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 /* prototypes */
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
-static int _float_approx_eq(double d1, double d2, double tolerance);
+static int _double_approx_eq(double d1, double d2, double tolerance);
 static double _mod_unit_circle_radians(double radians);
 
 double sine_taylor(double radians)
@@ -51,7 +52,7 @@ double sine_taylor(double radians)
 
 	last_y = -DBL_MAX;
 	y = 0;
-	tolerance = 0.000000001;
+	tolerance = DBL_EPSILON * 1048576.0;
 	for (n = 0; n <= _Trig_Taylor_loop_limit; ++n) {
 
 		last_y = y;
@@ -61,7 +62,7 @@ double sine_taylor(double radians)
 		v = ((s * t) / b);
 		y = y + v;
 
-		debugf("\tn=%lu\n", (unsigned long)n);
+		debugf("\tn=%llu\n", (unsigned long long)n);
 		debugf("\ts=%f\n", s);
 		debugf("\tt=%f\n", t);
 		debugf("\tb=%f\n", b);
@@ -69,7 +70,7 @@ double sine_taylor(double radians)
 		debugf("\ty=%f\n\n", y);
 
 		if (n >= _Trig_Taylor_min_loops &&
-		    _float_approx_eq(last_y, y, tolerance)) {
+		    _double_approx_eq(last_y, y, tolerance)) {
 			break;
 		}
 	}
@@ -143,31 +144,104 @@ static double _pow(double x, uint64_t p)
 	return d;
 }
 
-static int _float_approx_eq(double d1, double d2, double tolerance)
+#ifndef Eh_float64
+#define Eh_float64 double
+#endif
+uint64_t eh_float64_to_uint64(Eh_float64 d)
 {
-	double from, to, swap;
+	uint64_t u64;
+	memcpy(&u64, &d, sizeof(Eh_float64));
+	return u64;
+}
+
+#ifndef Eh_float32
+#define Eh_float32 float
+#endif
+uint32_t eh_float32_to_uint32(Eh_float32 d)
+{
+	uint32_t u32;
+	memcpy(&u32, &d, sizeof(Eh_float32));
+	return u32;
+}
+
+/* adapted from https://bitbashing.io/comparing-floats.html */
+uint64_t _float64_distance(Eh_float64 l, Eh_float64 r)
+{
+	uint64_t u64a, u64b;
+
+	if (l == r) {
+		return 0;
+	}
+
+	if (isnan(l) || isnan(r) || isinf(l) || isinf(r)) {
+		return UINT64_MAX;
+	}
+
+	if ((l < 0.0 && r > 0.0) || (l > 0.0 && r < 0.0)) {
+		return _float64_distance(l, 0.0) + _float64_distance(r, 0.0);
+	}
+
+	u64a = eh_float64_to_uint64(l > r ? l : r);
+	u64b = eh_float64_to_uint64(l > r ? r : l);
+
+	return (u64a - u64b);
+}
+
+uint32_t _float32_distance(Eh_float32 l, Eh_float32 r)
+{
+	uint32_t u32a, u32b;
+
+	if (l == r) {
+		return 0;
+	}
+
+	if (isnan(l) || isnan(r) || isinf(l) || isinf(r)) {
+		return UINT32_MAX;
+	}
+
+	if ((l < 0.0 && r > 0.0) || (l > 0.0 && r < 0.0)) {
+		return _float32_distance(l, 0.0) + _float32_distance(r, 0.0);
+	}
+
+	u32a = eh_float32_to_uint32(l > r ? l : r);
+	u32b = eh_float32_to_uint32(l > r ? r : l);
+
+	return (u32a - u32b);
+}
+
+static double _max_d(double d1, double d2)
+{
+	return (d2 > d1) ? d2 : d1;
+}
+
+/* In our case, we will assume the following:
+ *
+ * NAN == NAN ... in most cases, this is *REALLY* wrong,
+ * in this specific case, it is what we want
+ *
+ * EPSILON is equal to the difference between 1.0 and the next representable
+ * value, thus we'll use a *scaled* tolerance
+ */
+static int _double_approx_eq(double d1, double d2, double tolerance)
+{
+	double abs1, abs2, diff, scaled_tolerance;
 
 	if ((isnan(d1) && isnan(d2)) || (d1 == d2)) {
 		return 1;
 	}
 
-	tolerance = (tolerance < 0.0) ? -tolerance : tolerance;
-
-	if ((d2 >= 0.0 && d2 < 1.0) || (d2 < 0.0 && d2 > -1.0)) {
-		from = d2 - tolerance;
-		to = d2 + tolerance;
+	if (isfinite(tolerance)) {
+		tolerance = fabs(tolerance);
 	} else {
-		from = d2 * (1.0 + tolerance);
-		to = d2 * (1.0 - tolerance);
+		tolerance = DBL_EPSILON;
 	}
 
-	if (from > to) {
-		swap = from;
-		from = to;
-		to = swap;
-	}
+	abs1 = fabs(d1);
+	abs2 = fabs(d2);
+	scaled_tolerance = tolerance * _max_d(abs1, abs2);
 
-	return (d1 >= from && d1 <= to) ? 1 : 0;
+	diff = fabs(d1 - d2);
+	return (diff <= scaled_tolerance) ? 1 : 0;
 }
 
 typedef double (dfunc) (double x);
@@ -182,7 +256,7 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 	t = ft(d);
 	g = fg(d);
 
-	floats_differ = _float_approx_eq(t, g, tolerance) ? 0 : 1;
+	floats_differ = _double_approx_eq(t, g, tolerance) ? 0 : 1;
 
 	if (floats_differ) {
 		prefix = "ERROR! ";
@@ -191,8 +265,20 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 	}
 	if (verbose || floats_differ) {
 		printf("%s\n", prefix);
-		printf("%s %s(%f) = %f\n", prefix, tname, d, t);
-		printf("%s %s(%f) = %f\n", prefix, gname, d, g);
+		printf("%s %s(%f)<0x%llX>\n%s\t\t= %f <0x%llX>\n", prefix,
+		       tname, d, (unsigned long long)eh_float64_to_uint64(d),
+		       prefix, t, (unsigned long long)eh_float64_to_uint64(t));
+		printf("%s %s(%f)<0x%llX>\n%s\t\t= %f <0x%llX>\n", prefix,
+		       gname, d, (unsigned long long)eh_float64_to_uint64(d),
+		       prefix, g, (unsigned long long)eh_float64_to_uint64(g));
+		printf("%s  float distance between %f and %f\n%s\t\t= %llu\n",
+		       prefix, t, g, prefix,
+		       (unsigned long long)_float32_distance((float)t,
+							     (float)g));
+		printf("%s double distance between %f and %f\n%s\t\t= %llu\n",
+		       prefix, t, g, prefix,
+		       (unsigned long long)_float64_distance(t, g));
+		printf("\n");
 	}
 	return floats_differ;
 }
@@ -279,7 +365,7 @@ static void parse_cmdline_args(struct sine_options_s *options, int argc,
 	options->test_specific = 0;
 	options->test_sin = 1;
 	options->test_cos = 1;
-	options->test_tan = 0;
+	options->test_tan = 1;
 	options->exhaustive_sin = 0;
 	options->exhaustive_cos = 0;
 	options->exhaustive_tan = 0;
@@ -334,9 +420,40 @@ static void parse_cmdline_args(struct sine_options_s *options, int argc,
 	}
 }
 
+int test_range(double from, double to, double inc, double tolerance,
+	       int test_inv, int verbose, int test_sin, int test_cos,
+	       int test_tan)
+{
+	int errors;
+	double d;
+	size_t i;
+
+	errors = 0;
+	i = 0;
+	for (d = from; d <= to; d += inc) {
+		errors +=
+		    compare_trig_functions(d, tolerance,
+					   verbose,
+					   test_sin, test_cos, test_tan);
+		++i;
+		if (test_inv) {
+			errors +=
+			    compare_trig_functions(-d, tolerance,
+						   verbose,
+						   test_sin,
+						   test_cos, test_tan);
+
+			++i;
+		}
+	}
+	printf("%d errors testing %llu values from %f t/m %f\n", errors,
+	       (unsigned long long)i, (test_inv) ? -to : from, to);
+	return errors;
+}
+
 int main(int argc, char **argv)
 {
-	double d, tolerance, from, to;
+	double d, tolerance, from, to, inc, test_inv;
 	int total_errors, errors;
 	uint64_t i;
 	struct sine_options_s options;
@@ -353,59 +470,35 @@ int main(int argc, char **argv)
 					   options.test_cos, options.test_tan);
 	} else {
 		total_errors = 0;
-		tolerance = 0.0001;
 
-		errors = 0;
-		to = 720 * (M_PI / 180);
-		from = -to;
-		for (i = 0; d <= to; ++i) {
-			d = (i * (M_PI / 180));
-			errors +=
-			    compare_trig_functions(-d, tolerance,
-						   options.verbose,
-						   options.test_sin,
-						   options.test_cos,
-						   options.test_tan);
-			errors +=
-			    compare_trig_functions(d, tolerance,
-						   options.verbose,
-						   options.test_sin,
-						   options.test_cos,
-						   options.test_tan);
-		}
-		printf("%d errors testing %lu values from %f to %f\n", errors,
-		       2UL * (unsigned long)i, from, to);
-		total_errors += errors;
+		tolerance = 0.0001;	/* close enough is good enough */
+		from = 0;
+		to = 1000;	/* how big is a thousand radians? */
+		inc = 1;	/* big steps */
+		test_inv = 1;	/* and test negative values, also */
+		total_errors +=
+		    test_range(from, to, inc, tolerance, test_inv,
+			       options.verbose, options.test_sin,
+			       options.test_cos, options.test_tan);
 
-		errors = 0;
-		from = -1000;
-		to = 1000;
-		for (i = 0, d = from; d <= to; d += 1.0, ++i) {
-			errors +=
-			    compare_trig_functions(d, tolerance,
-						   options.verbose,
-						   options.test_sin,
-						   options.test_cos,
-						   options.test_tan);
-		}
-		printf("%d errors testing %lu values from %f to %f\n", errors,
-		       (unsigned long)i, from, to);
-		total_errors += errors;
-
-		errors = 0;
 		to = 1 + (M_PI * M_PI);
 		from = -to;
-		for (i = 0, d = from; d <= to; d += 0.00001, ++i) {
-			errors +=
-			    compare_trig_functions(d, tolerance,
-						   options.verbose,
-						   options.test_sin,
-						   options.test_cos,
-						   options.test_tan);
-		}
-		printf("%d errors testing %lu values from %f to %f\n", errors,
-		       (unsigned long)i, from, to);
-		total_errors += errors;
+		inc = 0.00001;	/* small steps */
+		total_errors +=
+		    test_range(from, to, inc, tolerance, test_inv,
+			       options.verbose, options.test_sin,
+			       options.test_cos, options.test_tan);
+
+		from = 0;
+		inc = (M_PI / 180);	/* degree as radian */
+		to = (360 * inc);	/* full 360 degrees */
+		to *= 2;	/* heck, let's go twice around */
+		to += 0.001;	/* and make sure we go a bit over */
+
+		total_errors +=
+		    test_range(from, to, inc, tolerance, test_inv,
+			       options.verbose, options.test_sin,
+			       options.test_cos, options.test_tan);
 
 		if (options.exhaustive_sin || options.exhaustive_cos
 		    || options.exhaustive_tan) {
@@ -426,9 +519,9 @@ int main(int argc, char **argv)
 							   exhaustive_tan);
 				d = (double)nextafterf((float)d, INFINITY);
 			}
-			printf("%d errors testing %lu values from %f to %f"
-			       " (sine only)\n", errors, (unsigned long)i, from,
-			       to);
+			printf("%d errors testing %llu values from %f to %f"
+			       " (sine only)\n", errors, (unsigned long long)i,
+			       from, to);
 			total_errors += errors;
 		}
 	}
