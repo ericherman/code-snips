@@ -52,7 +52,8 @@ double sine_taylor(double radians)
 
 	last_y = -DBL_MAX;
 	y = 0;
-	tolerance = DBL_EPSILON * 1048576.0;
+	/* within 100 scaled epsilon is really good enough */
+	tolerance = 100.0 * DBL_EPSILON;
 	for (n = 0; n <= _Trig_Taylor_loop_limit; ++n) {
 
 		last_y = y;
@@ -181,10 +182,10 @@ uint64_t _float64_distance(Eh_float64 l, Eh_float64 r)
 		return _float64_distance(l, 0.0) + _float64_distance(r, 0.0);
 	}
 
-	u64a = eh_float64_to_uint64(l > r ? l : r);
-	u64b = eh_float64_to_uint64(l > r ? r : l);
+	u64a = eh_float64_to_uint64(l);
+	u64b = eh_float64_to_uint64(r);
 
-	return (u64a - u64b);
+	return (u64a >= u64b) ? (u64a - u64b) : (u64b - u64a);
 }
 
 uint32_t _float32_distance(Eh_float32 l, Eh_float32 r)
@@ -203,10 +204,10 @@ uint32_t _float32_distance(Eh_float32 l, Eh_float32 r)
 		return _float32_distance(l, 0.0) + _float32_distance(r, 0.0);
 	}
 
-	u32a = eh_float32_to_uint32(l > r ? l : r);
-	u32b = eh_float32_to_uint32(l > r ? r : l);
+	u32a = eh_float32_to_uint32(l);
+	u32b = eh_float32_to_uint32(r);
 
-	return (u32a - u32b);
+	return (u32a >= u32b) ? (u32a - u32b) : (u32b - u32a);
 }
 
 static double _max_d(double d1, double d2)
@@ -214,21 +215,15 @@ static double _max_d(double d1, double d2)
 	return (d2 > d1) ? d2 : d1;
 }
 
-/* In our case, we will assume the following:
- *
- * NAN == NAN ... in most cases, this is *REALLY* wrong,
- * in this specific case, it is what we want
- *
+/*
  * EPSILON is equal to the difference between 1.0 and the next representable
- * value, thus we'll use a *scaled* tolerance
+ * value, thus we'll use a *scaled* tolerance. It *might* make sense to try
+ * to scale epsilon *down* between very small numbers near 0, but we will not
+ * do that here.
  */
-static int _double_approx_eq(double d1, double d2, double tolerance)
+static double _scale_tolerance_up(double d1, double d2, double tolerance)
 {
-	double abs1, abs2, diff, scaled_tolerance;
-
-	if ((isnan(d1) && isnan(d2)) || (d1 == d2)) {
-		return 1;
-	}
+	double abs1, abs2, abs_max;
 
 	if (isfinite(tolerance)) {
 		tolerance = fabs(tolerance);
@@ -238,9 +233,34 @@ static int _double_approx_eq(double d1, double d2, double tolerance)
 
 	abs1 = fabs(d1);
 	abs2 = fabs(d2);
-	scaled_tolerance = tolerance * _max_d(abs1, abs2);
+
+	abs_max = _max_d(abs1, abs2);
+
+	if (abs_max > 1.0) {
+		return tolerance * abs_max;
+	}
+
+	return tolerance;
+}
+
+/* In our case, we will assume the following:
+ *
+ * NAN == NAN ... in most cases, this is *REALLY* wrong,
+ * in this specific case, it is what we want
+ *
+ */
+static int _double_approx_eq(double d1, double d2, double tolerance)
+{
+	double diff, scaled_tolerance;
+
+	if ((isnan(d1) && isnan(d2)) || (d1 == d2)) {
+		return 1;
+	}
+
+	scaled_tolerance = _scale_tolerance_up(d1, d2, tolerance);
 
 	diff = fabs(d1 - d2);
+
 	return (diff <= scaled_tolerance) ? 1 : 0;
 }
 
@@ -265,18 +285,21 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 	}
 	if (verbose || floats_differ) {
 		printf("%s\n", prefix);
-		printf("%s %s(%f)<0x%llX>\n%s\t\t= %f <0x%llX>\n", prefix,
-		       tname, d, (unsigned long long)eh_float64_to_uint64(d),
-		       prefix, t, (unsigned long long)eh_float64_to_uint64(t));
-		printf("%s %s(%f)<0x%llX>\n%s\t\t= %f <0x%llX>\n", prefix,
+		printf("%s %s(%.15f)<0x%llX>\n" "%s\t\t= %.15f <0x%llX>\n",
+		       prefix, tname, d,
+		       (unsigned long long)eh_float64_to_uint64(d), prefix, t,
+		       (unsigned long long)eh_float64_to_uint64(t));
+		printf("%s %s(%.15f)<0x%llX>\n%s\t\t= %.15f <0x%llX>\n", prefix,
 		       gname, d, (unsigned long long)eh_float64_to_uint64(d),
 		       prefix, g, (unsigned long long)eh_float64_to_uint64(g));
-		printf("%s  float distance between %f and %f\n%s\t\t= %llu\n",
-		       prefix, t, g, prefix,
+		printf("%s  float distance between %.15f\n"
+		       "%s                     and %.15f\n"
+		       "%s\t\t= %llu\n", prefix, t, prefix, g, prefix,
 		       (unsigned long long)_float32_distance((float)t,
 							     (float)g));
-		printf("%s double distance between %f and %f\n%s\t\t= %llu\n",
-		       prefix, t, g, prefix,
+		printf("%s double distance between %.15f\n"
+		       "%s                     and %.15f\n"
+		       "%s\t\t= %llu\n", prefix, t, prefix, g, prefix,
 		       (unsigned long long)_float64_distance(t, g));
 		printf("\n");
 	}
@@ -432,22 +455,20 @@ int test_range(double from, double to, double inc, double tolerance,
 	i = 0;
 	for (d = from; d <= to; d += inc) {
 		errors +=
-		    compare_trig_functions(d, tolerance,
-					   verbose,
-					   test_sin, test_cos, test_tan);
+		    compare_trig_functions(d, tolerance, verbose, test_sin,
+					   test_cos, test_tan);
 		++i;
 		if (test_inv) {
 			errors +=
-			    compare_trig_functions(-d, tolerance,
-						   verbose,
-						   test_sin,
-						   test_cos, test_tan);
-
+			    compare_trig_functions(-d, tolerance, verbose,
+						   test_sin, test_cos,
+						   test_tan);
 			++i;
 		}
 	}
-	printf("%d errors testing %llu values from %f t/m %f\n", errors,
-	       (unsigned long long)i, (test_inv) ? -to : from, to);
+	printf("%d errors testing %llu values from %f t/m %f\n"
+	       "\t(within %.15f)\n", errors, (unsigned long long)i,
+	       (test_inv) ? -to : from, to, tolerance);
 	return errors;
 }
 
@@ -463,7 +484,8 @@ int main(int argc, char **argv)
 	if (options.help) {
 		print_help(stdout, argv[0]);
 	} else if (options.test_specific) {
-		tolerance = 0.00001;
+		/* https://www.jpl.nasa.gov/edu/news/2016/3/16/how-many-decimals-of-pi-do-we-really-need/ */
+		tolerance = 0.00000000000001;
 		total_errors =
 		    compare_trig_functions(options.test_double, tolerance,
 					   options.verbose, options.test_sin,
@@ -471,7 +493,7 @@ int main(int argc, char **argv)
 	} else {
 		total_errors = 0;
 
-		tolerance = 0.0001;	/* close enough is good enough */
+		tolerance = 0.00000001;	/* reasonably close */
 		from = 0;
 		to = 1000;	/* how big is a thousand radians? */
 		inc = 1;	/* big steps */
@@ -481,6 +503,7 @@ int main(int argc, char **argv)
 			       options.verbose, options.test_sin,
 			       options.test_cos, options.test_tan);
 
+		tolerance = 0.000001;	/* close enough is good enough */
 		to = 1 + (M_PI * M_PI);
 		from = -to;
 		inc = 0.00001;	/* small steps */
