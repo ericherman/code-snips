@@ -49,6 +49,15 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define COS_3PI_2 0.0
 #define COS_7PI_4 M_SQRT1_2
 
+#define _Swap(x,y) \
+	do { \
+		if (&(x) != &(y)) { \
+			(x) ^= (y); \
+			(y) ^= (x); \
+			(x) ^= (y); \
+		} \
+	} while (0)
+
 /* prototypes */
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
@@ -197,19 +206,19 @@ double cosecant_taylor(double radians)
 /* this is, of course, a source of some error */
 static double _mod_unit_circle_radians(double radians)
 {
-	double x;
+	long double x;
 
 	if (radians > 2 * M_PI || radians < -2 * M_PI) {
-		x = fmod(radians, 2 * M_PI);
+		x = fmodl((long double)radians, 2 * M_PI);
 	} else {
 		x = radians;
 	}
-	return x;
+	return (double)x;
 }
 
 static double _factorial(uint64_t n)
 {
-	double result;
+	long double result;
 
 	if (n < 2) {
 		return 1.0;
@@ -220,18 +229,18 @@ static double _factorial(uint64_t n)
 		result *= --n;
 	} while (n > 1);
 
-	return result;
+	return (double)result;
 }
 
 static double _pow(double x, uint64_t p)
 {
-	double d;
+	long double d;
 	size_t i;
 	d = 1;
 	for (i = 1; i <= p; ++i) {
 		d *= x;
 	}
-	return d;
+	return (double)d;
 }
 
 #ifndef Eh_float64
@@ -253,15 +262,6 @@ uint32_t eh_float32_to_uint32(Eh_float32 d)
 	memcpy(&u32, &d, sizeof(Eh_float32));
 	return u32;
 }
-
-#define _Swap(x,y) \
-	do { \
-		if (&(x) != &(y)) { \
-			(x) ^= (y); \
-			(y) ^= (x); \
-			(x) ^= (y); \
-		} \
-	} while (0)
 
 /* adapted from https://bitbashing.io/comparing-floats.html */
 uint64_t _float64_distance(Eh_float64 l, Eh_float64 r)
