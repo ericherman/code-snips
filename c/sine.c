@@ -28,8 +28,8 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #endif
 
 #ifndef _Trig_Taylor_tolerance
-	/* within 100 scaled epsilon is really good enough */
-#define _Trig_Taylor_tolerance (100.0 * DBL_EPSILON)
+	/* within scaled 2xepsilon is really good enough */
+#define _Trig_Taylor_tolerance (2 * DBL_EPSILON)
 #endif
 
 /* sin(pi/4) : https://www.wolframalpha.com/input/?i=sin(pi%2F4) */
@@ -57,11 +57,14 @@ static double _mod_unit_circle_radians(double radians);
 
 double sine_taylor(double radians)
 {
+#ifdef DEBUG
+	static size_t _biggest_sin_taylor_loop = 0;
+#endif
 	double x, y, s, t, b, v, last_y;
 	size_t n;
 	double tolerance;
 
-	debugf("sine_taylor(%f)\n", radians);
+	debugf("sine_taylor(%.15f)\n", radians);
 
 	if (isnan(radians)) {
 		return radians;
@@ -87,29 +90,41 @@ double sine_taylor(double radians)
 		y = y + v;
 
 		debugf("\tn=%llu\n", (unsigned long long)n);
-		debugf("\ts=%f\n", s);
-		debugf("\tt=%f\n", t);
-		debugf("\tb=%f\n", b);
-		debugf("\tv=%f\n\n", v);
-		debugf("\ty=%f\n\n", y);
+		debugf("\ts=%.15f\n", s);
+		debugf("\tt=%.15f\n", t);
+		debugf("\tb=%.15f\n", b);
+		debugf("\tv=%.15f\n\n", v);
+		debugf("\ty=%.15f\n", y);
+		debugf("\tl=(%.15f)\n", last_y);
+		debugf("\n");
 
 		if (n >= _Trig_Taylor_min_loops &&
 		    _double_approx_eq(last_y, y, tolerance)) {
 			break;
 		}
 	}
-	debugf("sine_taylor(%f) = %f\n", radians, y);
+#ifdef DEBUG
+	if (n > _biggest_sin_taylor_loop) {
+		_biggest_sin_taylor_loop = n;
+		debugf("sine_taylor(%.15f) took %llu expansions\n", radians,
+		       (unsigned long long)_biggest_sin_taylor_loop);
+	}
+#endif
+	debugf("sine_taylor(%.15f) = %.15f\n", radians, y);
 	return y;
 }
 
 /* or: sin((M_PI / 2) - radians) */
 double cosine_taylor(double radians)
 {
+#ifdef DEBUG
+	static size_t _biggest_cos_taylor_loop = 0;
+#endif
 	double x, y, s, t, b, v, last_y;
 	size_t n;
 	double tolerance;
 
-	debugf("cosine_taylor(%f)\n", radians);
+	debugf("cosine_taylor(%.15f)\n", radians);
 
 	if (isnan(radians)) {
 		return radians;
@@ -133,11 +148,13 @@ double cosine_taylor(double radians)
 		y = y + v;
 
 		debugf("\tn=%llu\n", (unsigned long long)n);
-		debugf("\ts=%f\n", s);
-		debugf("\tt=%f\n", t);
-		debugf("\tb=%f\n", b);
-		debugf("\tv=%f\n\n", v);
-		debugf("\ty=%f\n\n", y);
+		debugf("\ts=%.15f\n", s);
+		debugf("\tt=%.15f\n", t);
+		debugf("\tb=%.15f\n", b);
+		debugf("\tv=%.15f\n\n", v);
+		debugf("\ty=%.15f\n", y);
+		debugf("\tl=(%.15f)\n", last_y);
+		debugf("\n");
 
 		if (n >= _Trig_Taylor_min_loops &&
 		    _double_approx_eq(last_y, y, tolerance)) {
@@ -145,7 +162,14 @@ double cosine_taylor(double radians)
 		}
 	}
 
-	debugf("cosine_taylor(%f) = %f\n", radians, y);
+#ifdef DEBUG
+	if (n > _biggest_cos_taylor_loop) {
+		_biggest_cos_taylor_loop = n;
+		debugf("cosine_taylor(%.15f) took %llu expansions\n", radians,
+		       (unsigned long long)_biggest_cos_taylor_loop);
+	}
+#endif
+	debugf("cosine_taylor(%.15f) = %.15f\n", radians, y);
 	return y;
 }
 
@@ -590,6 +614,8 @@ int main(int argc, char **argv)
 
 	parse_cmdline_args(&options, argc, argv);
 
+	total_errors = 0;
+
 	if (options.help) {
 		print_help(stdout, argv[0]);
 	} else if (options.test_specific) {
@@ -600,7 +626,6 @@ int main(int argc, char **argv)
 					   options.verbose, options.test_sin,
 					   options.test_cos, options.test_tan);
 	} else {
-		total_errors = 0;
 
 		tolerance = 0.00000001;	/* reasonably close */
 		from = 0;
