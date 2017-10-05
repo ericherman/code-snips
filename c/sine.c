@@ -27,6 +27,28 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define _Trig_Taylor_min_loops 5U
 #endif
 
+#ifndef _Trig_Taylor_tolerance
+	/* within 100 scaled epsilon is really good enough */
+#define _Trig_Taylor_tolerance (100.0 * DBL_EPSILON)
+#endif
+
+/* sin(pi/4) : https://www.wolframalpha.com/input/?i=sin(pi%2F4) */
+#define SIN_1PI_4 M_SQRT1_2
+#define SIN_2PI_4 1.0
+#define SIN_3PI_4 M_SQRT1_2
+#define SIN_4PI_4 0.0
+#define SIN_5PI_4 -M_SQRT1_2
+#define SIN_3PI_2 -1.0
+#define SIN_7PI_4 -M_SQRT1_2
+
+#define COS_1PI_4 M_SQRT1_2
+#define COS_2PI_4 0.0
+#define COS_3PI_4 -M_SQRT1_2
+#define COS_4PI_4 -1.0
+#define COS_5PI_4 -M_SQRT1_2
+#define COS_3PI_2 0.0
+#define COS_7PI_4 M_SQRT1_2
+
 /* prototypes */
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
@@ -50,10 +72,11 @@ double sine_taylor(double radians)
 
 	x = _mod_unit_circle_radians(radians);
 
+	/* sin(a-b) == sin(a) cos(b) - cos(a) sin(b) */
+
 	last_y = -DBL_MAX;
 	y = 0;
-	/* within 100 scaled epsilon is really good enough */
-	tolerance = 100.0 * DBL_EPSILON;
+	tolerance = _Trig_Taylor_tolerance;
 	for (n = 0; n <= _Trig_Taylor_loop_limit; ++n) {
 
 		last_y = y;
@@ -79,9 +102,51 @@ double sine_taylor(double radians)
 	return y;
 }
 
+/* or: sin((M_PI / 2) - radians) */
 double cosine_taylor(double radians)
 {
-	return sine_taylor((M_PI / 2) - radians);
+	double x, y, s, t, b, v, last_y;
+	size_t n;
+	double tolerance;
+
+	debugf("cosine_taylor(%f)\n", radians);
+
+	if (isnan(radians)) {
+		return radians;
+	}
+	if (isfinite(radians) == 0) {
+		return NAN;
+	}
+
+	x = _mod_unit_circle_radians(radians);
+
+	last_y = -DBL_MAX;
+	y = 0;
+	tolerance = _Trig_Taylor_tolerance;
+	for (n = 0; n <= _Trig_Taylor_loop_limit; ++n) {
+
+		last_y = y;
+		s = (n % 2 == 0) ? 1.0 : -1.0;
+		t = _pow(x, (2 * n));
+		b = _factorial((2 * n));
+		v = ((s * t) / b);
+		y = y + v;
+
+		debugf("\tn=%llu\n", (unsigned long long)n);
+		debugf("\ts=%f\n", s);
+		debugf("\tt=%f\n", t);
+		debugf("\tb=%f\n", b);
+		debugf("\tv=%f\n\n", v);
+		debugf("\ty=%f\n\n", y);
+
+		if (n >= _Trig_Taylor_min_loops &&
+		    _double_approx_eq(last_y, y, tolerance)) {
+			break;
+		}
+	}
+
+	debugf("cosine_taylor(%f) = %f\n", radians, y);
+	return y;
 }
 
 double tangent_taylor(double radians)
@@ -165,10 +230,20 @@ uint32_t eh_float32_to_uint32(Eh_float32 d)
 	return u32;
 }
 
+#define _Swap(x,y) \
+	do { \
+		if (&(x) != &(y)) { \
+			(x) ^= (y); \
+			(y) ^= (x); \
+			(x) ^= (y); \
+		} \
+	} while (0)
+
 /* adapted from https://bitbashing.io/comparing-floats.html */
 uint64_t _float64_distance(Eh_float64 l, Eh_float64 r)
 {
 	uint64_t u64a, u64b;
+	Eh_float64 tmp;
 
 	if (l == r) {
 		return 0;
@@ -178,19 +253,37 @@ uint64_t _float64_distance(Eh_float64 l, Eh_float64 r)
 		return UINT64_MAX;
 	}
 
-	if ((l < 0.0 && r > 0.0) || (l > 0.0 && r < 0.0)) {
-		return _float64_distance(l, 0.0) + _float64_distance(r, 0.0);
+	if (r > l) {
+		/* Sadly, we can't trust the compiler to eliminate the temp
+		   variable, but it's okay https://godbolt.org/g/2ohAiB */
+		tmp = l;
+		l = r;
+		r = tmp;
+	}
+
+	if (nextafter(r, INFINITY) == l) {
+		return 1U;
+	}
+
+	/* hack around weird boundary condition around -0.0 */
+	if (l > 0.0 && r < 0.0) {
+		u64a = _float64_distance(l, 0.0);
+		u64b = 1U + _float64_distance(r, nextafter(0.0, -INFINITY));
+		return u64a + u64b;
 	}
 
 	u64a = eh_float64_to_uint64(l);
 	u64b = eh_float64_to_uint64(r);
-
-	return (u64a >= u64b) ? (u64a - u64b) : (u64b - u64a);
+	if (u64b > u64a) {
+		_Swap(u64a, u64b);
+	}
+	return u64a - u64b;
 }
 
 uint32_t _float32_distance(Eh_float32 l, Eh_float32 r)
 {
 	uint32_t u32a, u32b;
+	Eh_float32 tmp;
 
 	if (l == r) {
 		return 0;
@@ -200,14 +293,29 @@ uint32_t _float32_distance(Eh_float32 l, Eh_float32 r)
 		return UINT32_MAX;
 	}
 
-	if ((l < 0.0 && r > 0.0) || (l > 0.0 && r < 0.0)) {
-		return _float32_distance(l, 0.0) + _float32_distance(r, 0.0);
+	if (r > l) {
+		tmp = l;
+		l = r;
+		r = tmp;
+	}
+
+	if (nextafter(r, INFINITY) == l) {
+		return 1U;
+	}
+
+	/* hack around weird boundary condition around -0.0 */
+	if (l > 0.0 && r < 0.0) {
+		u32a = _float32_distance(l, 0.0);
+		u32b = 1U + _float32_distance(r, nextafter(0.0, -INFINITY));
+		return u32a + u32b;
 	}
 
 	u32a = eh_float32_to_uint32(l);
 	u32b = eh_float32_to_uint32(r);
-
-	return (u32a >= u32b) ? (u32a - u32b) : (u32b - u32a);
+	if (u32b > u32a) {
+		_Swap(u32a, u32b);
+	}
+	return u32a - u32b;
 }
 
 static double _max_d(double d1, double d2)
@@ -294,13 +402,14 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 		       prefix, g, (unsigned long long)eh_float64_to_uint64(g));
 		printf("%s  float distance between %.15f\n"
 		       "%s                     and %.15f\n"
-		       "%s\t\t= %llu\n", prefix, t, prefix, g, prefix,
+		       "%s                       = %llu\n", prefix, t, prefix,
+		       g, prefix,
 		       (unsigned long long)_float32_distance((float)t,
 							     (float)g));
 		printf("%s double distance between %.15f\n"
 		       "%s                     and %.15f\n"
-		       "%s\t\t= %llu\n", prefix, t, prefix, g, prefix,
-		       (unsigned long long)_float64_distance(t, g));
+		       "%s                       = %llu\n", prefix, t, prefix,
+		       g, prefix, (unsigned long long)_float64_distance(t, g));
 		printf("\n");
 	}
 	return floats_differ;
