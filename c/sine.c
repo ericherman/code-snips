@@ -28,8 +28,8 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #endif
 
 #ifndef _Trig_Taylor_tolerance
-	/* within scaled 2xepsilon is really good enough */
-#define _Trig_Taylor_tolerance (2 * DBL_EPSILON)
+	/* within scaled 1.1 x Epsilon is really good enough */
+#define _Trig_Taylor_tolerance (1.1 * DBL_EPSILON)
 #endif
 
 /* sin(pi/4) : https://www.wolframalpha.com/input/?i=sin(pi%2F4) */
@@ -49,6 +49,78 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define COS_3PI_2 0.0
 #define COS_7PI_4 M_SQRT1_2
 
+#ifndef _Trig_tangent_use_Bernoulli
+#define _Trig_tangent_use_Bernoulli 0
+#endif
+
+/* https://rosettacode.org/wiki/Bernoulli_numbers#C */
+const double _Bernoulli[] = {
+	1.0 / 1.0,
+	-1.0 / 2.0,
+	1.0 / 6.0,
+	0.0,
+	-1.0 / 30.0,
+	0.0,
+	1.0 / 42.0,
+	0.0,
+	-1.0 / 30.0,
+	0.0,
+	5.0 / 66.0,
+	0.0,
+	-691.0 / 2730.0,
+	0.0,
+	7.0 / 6.0,
+	0.0,
+	-3617.0 / 510.0,
+	0.0,
+	43867.0 / 798.0,
+	0.0,
+	-174611.0 / 330.0,
+	0.0,
+	854513.0 / 138.0,
+	0.0,
+	-236364091.0 / 2730.0,
+	0.0,
+	8553103.0 / 6.0,
+	0.0,
+	-23749461029.0 / 870.0,
+	0.0,
+	8615841276005.0 / 14322.0,
+	0.0,
+	-7709321041217.0 / 510.0,
+	0.0,
+	2577687858367.0 / 6.0,
+	0.0,
+	-26315271553053477373.0 / 1919190.0,
+	0.0,
+	2929993913841559.0 / 6.0,
+	0.0,
+	-261082718496449122051.0 / 13530.0,
+	0.0,
+	1520097643918070802691.0 / 1806.0,
+	0.0,
+	-27833269579301024235023.0 / 690.0,
+	0.0,
+	596451111593912163277961.0 / 282.0,
+	0.0,
+	-5609403368997817686249127547.0 / 46410.0,
+	0.0,
+	495057205241079648212477525.0 / 66.0,
+	0.0,
+	-801165718135489957347924991853.0 / 1590.0,
+	0.0,
+	29149963634884862421418123812691.0 / 798.0,
+	0.0,
+	-2479392929313226753685415739663229.0 / 870.0,
+	0.0,
+	84483613348880041862046775994036021.0 / 354.0,
+	0.0,
+	-1215233140483755572040304994079820246041491.0 / 56786730.0,
+	0.0,
+};
+
+#define _Bernoulli_length (sizeof(_Bernoulli) / sizeof(double))
+
 #define _Swap(x,y) \
 	do { \
 		if (&(x) != &(y)) { \
@@ -59,6 +131,8 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 	} while (0)
 
 /* prototypes */
+double sine_taylor(double radians);
+double cosine_taylor(double radians);
 static double _factorial(uint64_t n);
 static double _pow(double x, uint64_t p);
 static int _double_approx_eq(double d1, double d2, double tolerance);
@@ -73,7 +147,7 @@ double sine_taylor(double radians)
 	size_t n;
 	double tolerance;
 
-	debugf("sine_taylor(%.15f)\n", radians);
+	debugf("sine_taylor(%.20f)\n", radians);
 
 	if (isnan(radians)) {
 		return radians;
@@ -83,6 +157,11 @@ double sine_taylor(double radians)
 	}
 
 	x = _mod_unit_circle_radians(radians);
+	if (((x > (1.0 * M_PI_4)) && (x < (3.0 * M_PI_4))) ||
+	    ((x > (5.0 * M_PI_4)) && (x < (7.0 * M_PI_4)))
+	    ) {
+		return cosine_taylor(x - M_PI_2);
+	}
 
 	/* sin(a-b) == sin(a) cos(b) - cos(a) sin(b) */
 
@@ -99,12 +178,12 @@ double sine_taylor(double radians)
 		y = y + v;
 
 		debugf("\tn=%llu\n", (unsigned long long)n);
-		debugf("\ts=%.15f\n", s);
-		debugf("\tt=%.15f\n", t);
-		debugf("\tb=%.15f\n", b);
-		debugf("\tv=%.15f\n\n", v);
-		debugf("\ty=%.15f\n", y);
-		debugf("\tl=(%.15f)\n", last_y);
+		debugf("\ts=%.20f\n", s);
+		debugf("\tt=%.20f\n", t);
+		debugf("\tb=%.20f\n", b);
+		debugf("\tv=%.20f\n\n", v);
+		debugf("\ty=%.20f\n", y);
+		debugf("\tl=(%.20f)\n", last_y);
 		debugf("\n");
 
 		if (n >= _Trig_Taylor_min_loops &&
@@ -115,11 +194,11 @@ double sine_taylor(double radians)
 #ifdef DEBUG
 	if (n > _biggest_sin_taylor_loop) {
 		_biggest_sin_taylor_loop = n;
-		debugf("sine_taylor(%.15f) took %llu expansions\n", radians,
+		debugf("sine_taylor(%.20f) took %llu expansions\n", radians,
 		       (unsigned long long)_biggest_sin_taylor_loop);
 	}
 #endif
-	debugf("sine_taylor(%.15f) = %.15f\n", radians, y);
+	debugf("sine_taylor(%.20f) = %.20f\n", radians, y);
 	return y;
 }
 
@@ -133,7 +212,7 @@ double cosine_taylor(double radians)
 	size_t n;
 	double tolerance;
 
-	debugf("cosine_taylor(%.15f)\n", radians);
+	debugf("cosine_taylor(%.20f)\n", radians);
 
 	if (isnan(radians)) {
 		return radians;
@@ -143,6 +222,11 @@ double cosine_taylor(double radians)
 	}
 
 	x = _mod_unit_circle_radians(radians);
+	if (((x > (1.0 * M_PI_4)) && (x < (3.0 * M_PI_4))) ||
+	    ((x > (5.0 * M_PI_4)) && (x < (7.0 * M_PI_4)))
+	    ) {
+		return sine_taylor(M_PI_2 - x);
+	}
 
 	last_y = -DBL_MAX;
 	y = 0;
@@ -157,12 +241,12 @@ double cosine_taylor(double radians)
 		y = y + v;
 
 		debugf("\tn=%llu\n", (unsigned long long)n);
-		debugf("\ts=%.15f\n", s);
-		debugf("\tt=%.15f\n", t);
-		debugf("\tb=%.15f\n", b);
-		debugf("\tv=%.15f\n\n", v);
-		debugf("\ty=%.15f\n", y);
-		debugf("\tl=(%.15f)\n", last_y);
+		debugf("\ts=%.20f\n", s);
+		debugf("\tt=%.20f\n", t);
+		debugf("\tb=%.20f\n", b);
+		debugf("\tv=%.20f\n\n", v);
+		debugf("\ty=%.20f\n", y);
+		debugf("\tl=(%.20f)\n", last_y);
 		debugf("\n");
 
 		if (n >= _Trig_Taylor_min_loops &&
@@ -174,17 +258,76 @@ double cosine_taylor(double radians)
 #ifdef DEBUG
 	if (n > _biggest_cos_taylor_loop) {
 		_biggest_cos_taylor_loop = n;
-		debugf("cosine_taylor(%.15f) took %llu expansions\n", radians,
+		debugf("cosine_taylor(%.20f) took %llu expansions\n", radians,
 		       (unsigned long long)_biggest_cos_taylor_loop);
 	}
 #endif
-	debugf("cosine_taylor(%.15f) = %.15f\n", radians, y);
+	debugf("cosine_taylor(%.20f) = %.20f\n", radians, y);
 	return y;
 }
 
+/* or return sin(radians) / cos(radians) */
 double tangent_taylor(double radians)
 {
+#if _Trig_tangent_use_Bernoulli
+#ifdef DEBUG
+	static size_t _biggest_tan_taylor_loop = 0;
+#endif
+	double x, y, s, t, b, v, last_y;
+	size_t n, max_loops;
+	double tolerance;
+
+	debugf("tangent_taylor(%.20f)\n", radians);
+
+	if (isnan(radians)) {
+		return radians;
+	}
+	if (isfinite(radians) == 0) {
+		return NAN;
+	}
+
+	x = _mod_unit_circle_radians(radians);
+
+	last_y = -DBL_MAX;
+	y = 0;
+	tolerance = 0.0;
+	max_loops = (_Bernoulli_length / 2);
+	for (n = 1; n < max_loops; ++n) {
+
+		last_y = y;
+		t = _Bernoulli[2 * n] * _pow(-4, n) * (1 - _pow(4, n));
+		b = _factorial(2 * n);
+		s = _pow(x, ((2 * n) - 1));
+		v = (t / b) * s;
+		y = y + v;
+
+		debugf("\tn=%llu\n", (unsigned long long)n);
+		debugf("\tt=%.20f\n", t);
+		debugf("\tb=%.20f\n", b);
+		debugf("\ts=%.20f\n", s);
+		debugf("\tv=%.20f\n\n", v);
+		debugf("\ty=%.20f\n", y);
+		debugf("\tl=(%.20f)\n", last_y);
+		debugf("\n");
+
+		if (n >= _Trig_Taylor_min_loops &&
+		    _double_approx_eq(last_y, y, tolerance)) {
+			break;
+		}
+	}
+
+#ifdef DEBUG
+	if (n > _biggest_tan_taylor_loop) {
+		_biggest_tan_taylor_loop = n;
+		debugf("tangent_taylor(%.20f) took %llu expansions\n", radians,
+		       (unsigned long long)_biggest_tan_taylor_loop);
+	}
+#endif
+	debugf("tangent_taylor(%.20f) = %.20f\n", radians, y);
+	return y;
+#else
 	return sine_taylor(radians) / cosine_taylor(radians);
+#endif
 }
 
 double cotangent_taylor(double radians)
@@ -417,21 +560,21 @@ static int _compare_function(double d, double tolerance, int verbose, dfunc ft,
 	}
 	if (verbose || floats_differ) {
 		printf("%s\n", prefix);
-		printf("%s %s(%.15f)<0x%llX>\n" "%s\t\t= %.15f <0x%llX>\n",
+		printf("%s %s(%.20f)<0x%llX>\n" "%s\t\t= %.20f <0x%llX>\n",
 		       prefix, tname, d,
 		       (unsigned long long)eh_float64_to_uint64(d), prefix, t,
 		       (unsigned long long)eh_float64_to_uint64(t));
-		printf("%s %s(%.15f)<0x%llX>\n%s\t\t= %.15f <0x%llX>\n", prefix,
+		printf("%s %s(%.20f)<0x%llX>\n%s\t\t= %.20f <0x%llX>\n", prefix,
 		       gname, d, (unsigned long long)eh_float64_to_uint64(d),
 		       prefix, g, (unsigned long long)eh_float64_to_uint64(g));
-		printf("%s  float distance between %.15f\n"
-		       "%s                     and %.15f\n"
+		printf("%s  float distance between %.20f\n"
+		       "%s                     and %.20f\n"
 		       "%s                       = %llu\n", prefix, t, prefix,
 		       g, prefix,
 		       (unsigned long long)_float32_distance((float)t,
 							     (float)g));
-		printf("%s double distance between %.15f\n"
-		       "%s                     and %.15f\n"
+		printf("%s double distance between %.20f\n"
+		       "%s                     and %.20f\n"
 		       "%s                       = %llu\n", prefix, t, prefix,
 		       g, prefix, (unsigned long long)_float64_distance(t, g));
 		printf("\n");
@@ -600,7 +743,7 @@ int test_range(double from, double to, double inc, double tolerance,
 		}
 	}
 	printf("%d errors testing %llu values from %f t/m %f\n"
-	       "\t(within %.15f)\n", errors, (unsigned long long)i,
+	       "\t(within %.20f)\n", errors, (unsigned long long)i,
 	       (test_inv) ? -to : from, to, tolerance);
 	return errors;
 }
