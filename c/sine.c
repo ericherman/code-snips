@@ -393,9 +393,9 @@ static double _factorial(uint64_t n)
 	result = n;
 	do {
 		result *= --n;
-	} while (n > 1);
+	} while (n > 21);
 
-	return (double)result;
+	return (double)(result * (small_vals[n - 1]));
 }
 
 static double _pow(double x, uint64_t p)
