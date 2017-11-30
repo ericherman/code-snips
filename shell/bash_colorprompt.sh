@@ -61,6 +61,17 @@ function get_server_role()
     exit $1;
 }
 
+function get_prompt_color_prefix()
+{
+    if [ $1 != 0 ]; then
+        echo ${RED}$1;
+    else
+        echo ${GREEN};
+    fi
+
+    exit $1;
+}
+
 if [ "$color_prompt" == yes ]; then
 
 
@@ -71,7 +82,7 @@ if [ "$color_prompt" == yes ]; then
         USER_COLOR=$DARK_GREEN
         psymb="\$"
     fi
-    export PROMPT_COMMAND='PS1="${USER_COLOR}\u${COLOR_NONE}@\h${SUBNET_COLOR}$(get_server_role $?)${COLOR_NONE}:\w$(if [ $? != 0 ]; then echo ${RED}; else echo ${GREEN}; fi)${psymb}${COLOR_NONE} "'
+    export PROMPT_COMMAND='PS1="${USER_COLOR}\u${COLOR_NONE}@\h${SUBNET_COLOR}$(get_server_role $?)${COLOR_NONE}:\w$(get_prompt_color_prefix $?)${psymb}${COLOR_NONE} "'
 else
     if [ $(id -u) -eq 0 ]; then
         PS1="[\u@\h \w]# "
