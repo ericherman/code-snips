@@ -64,7 +64,7 @@ function get_server_role()
 function get_prompt_color_prefix()
 {
     if [ $1 != 0 ]; then
-        echo ${RED}$1;
+        echo "${RED}($1)";
     else
         echo ${GREEN};
     fi
