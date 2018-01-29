@@ -1,0 +1,87 @@
+#!/bin/bash
+
+while getopts ":b:d:p:l:z" opt; do
+	case $opt in
+	b)
+		MYSQLD_BASE_DIR="$OPTARG"
+		;;
+	p)
+		MYSQLD_PORT="$OPTARG"
+		;;
+	d)
+		MYSQLD_DATA_DIR="$OPTARG"
+		;;
+	l)
+		MYSQLD_LOG_DIR="$OPTARG"
+		;;
+	z)
+		LAUNCH_PREFIX="$OPTARG"
+		;;
+	\?)
+		echo "Unknown Option: -$OPTARG" >&2
+		exit 1
+		;;
+	:)
+		echo "Option -$OPTARG requires an argument" >&2
+		exit 1
+		;;
+	esac
+done
+
+if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
+	MYSQLD_BASE_DIR=$1
+fi
+if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
+	echo "Option '-b basedir' must be set (and '-p port')"
+	exit 1
+fi
+
+if [ "_${MYSQLD_PORT}_" == "__" ]; then
+	MYSQLD_PORT=$2
+fi
+if [ "_${MYSQLD_PORT}_" == "__" ]; then
+	echo "Option '-p port' must be set (and '-b basedir')"
+	exit 1
+fi
+
+
+if [ "_${MYSQLD_DATA_DIR}_" == "__" ]; then
+	MYSQLD_DATA_DIR=${MYSQLD_BASE_DIR}/data
+fi
+
+if [ "_${MYSQLD_LOG_DIR}_" == "__" ]; then
+	MYSQLD_LOG_DIR=/tmp/${USER}-mysql-${MYSQLD_PORT}/mysql_logs
+fi
+mkdir -pv ${MYSQLD_LOG_DIR};
+
+MYSQLD_BIN_DIR=${MYSQLD_BASE_DIR}/bin
+
+echo
+echo MYSQLD_BIN_DIR=$MYSQLD_BIN_DIR
+echo MYSQLD_BASE_DIR=$MYSQLD_BASE_DIR
+echo MYSQLD_DATA_DIR=$MYSQLD_DATA_DIR
+echo MYSQLD_PORT=$MYSQLD_PORT
+echo
+
+$LAUNCH_PREFIX $MYSQLD_BIN_DIR/mysqld \
+ --no-defaults \
+ --basedir=$MYSQLD_BASE_DIR \
+ --datadir=$MYSQLD_DATA_DIR \
+ --general-log-file=${MYSQLD_LOG_DIR}/mysqld.log \
+ --port=${MYSQLD_PORT} \
+ --pid-file=${MYSQLD_DATA_DIR}/mysqld.pid \
+ --socket=${MYSQLD_DATA_DIR}/mysql.sock \
+ --myisam_sort_buffer_size=64M \
+ --innodb_log_buffer_size=256M \
+ --innodb_sort_buffer_size=1M \
+ --read_buffer_size=128K \
+ --read_rnd_buffer_size=256K \
+ --max_allowed_packet=64M \
+ --net_buffer_length=16K \
+ --sort_buffer_size=1M \
+ --tmp_table_size=64M \
+ --max_heap_table_size=512M \
+ --thread_cache_size=16 &
+
+sleep 3
+ps auxwww | grep -i "^USER\|mysqld" | grep -v grep | grep -v launch-mysqld | sed -e's/\(.*\)/\1\n/'
