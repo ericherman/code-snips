@@ -249,7 +249,7 @@ int print_name_to_users(FILE *stream)
 		bytes_written += rv;
 		for (auto it2 = list.begin(); it2 != list.end(); ++it2) {
 			Host_user *hu = *it2;
-			rv = fprintf(stream, "\t`%s`@`%s`,\n", hu->id, hu->host);
+			rv = fprintf(stream, "\t%p: `%s`@`%s`,\n", (void *)hu, hu->id, hu->host);
 			if (rv < 0) goto err_print_name_to_users;
 			bytes_written += rv;
 		}
