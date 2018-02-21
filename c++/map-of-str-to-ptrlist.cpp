@@ -28,9 +28,24 @@ class Host_user;
 Tracking_memory_key memory_key_a; /* this is not const */
 Tracking_memory_key memory_key_b; /* this is not const */
 Tracking_memory_key memory_key_c; /* this is not const */
+Tracking_memory_key memory_key_d; /* this is not const */
+Tracking_memory_key memory_key_e; /* this is not const */
 Host_user **all_users= nullptr;
+
+/* This unordered_map should use Tracking_allocator with memory_key_d */
+/* The list<Host_user *> should also allocate with memory_key_d */
 unordered_map < string, list < Host_user * >>name_to_users;
 /* END GLOBAL VARIABLES */
+
+
+void load_mem_tracking_keys(void)
+{
+	memory_key_a= 1U;
+	memory_key_b= 1U;
+	memory_key_c= 2U;
+	memory_key_d= 3U;
+	memory_key_e= 5U;
+}
 
 extern "C" void * tracking_malloc(Tracking_memory_key key, size_t size) {
 	void *ptr= malloc(size);
@@ -245,16 +260,14 @@ int print_name_to_users(FILE *stream)
 	return bytes_written;
 
 err_print_name_to_users:
-	fprintf(stderr, "error writing to stream %p\n", stream);
+	fprintf(stderr, "error writing to stream %p\n", (void *)stream);
 	return rv;
 }
 
+
 int main(void)
 {
-	memory_key_a= 1U;
-	memory_key_b= 2U;
-	memory_key_c= 2U;
-
+	load_mem_tracking_keys();
 	load_all_users();
 
 	print_name_to_users(stdout);
