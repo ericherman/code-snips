@@ -30,6 +30,7 @@ Tracking_memory_key memory_key_b; /* this is not const */
 Tracking_memory_key memory_key_c; /* this is not const */
 Tracking_memory_key memory_key_d; /* this is not const */
 Tracking_memory_key memory_key_e; /* this is not const */
+Tracking_memory_key memory_key_f; /* this is not const */
 Host_user **all_users= nullptr;
 
 /* This unordered_map should use Tracking_allocator with memory_key_d */
@@ -40,11 +41,12 @@ unordered_map < string, list < Host_user * >>name_to_users;
 
 void load_mem_tracking_keys(void)
 {
-	memory_key_a= 1U;
+	memory_key_a= 0U;
 	memory_key_b= 1U;
-	memory_key_c= 2U;
-	memory_key_d= 3U;
-	memory_key_e= 5U;
+	memory_key_c= 1U;
+	memory_key_d= 2U;
+	memory_key_e= 3U;
+	memory_key_f= 5U;
 }
 
 extern "C" void * tracking_malloc(Tracking_memory_key key, size_t size) {
@@ -160,6 +162,24 @@ bool operator!= (const Tracking_allocator<T>& a1, const Tracking_allocator<T>& a
 
 #endif // BOGUS_ALLOCATOR_INCLUDED
 
+char *tracking_strdup(Tracking_memory_key key, const char *s)
+{
+	size_t len;
+	char *dup;
+
+	len = s ? strlen(s) : 0;
+	dup = (char *)tracking_malloc(key, len + 1);
+	if (!dup) {
+		return NULL;
+	}
+	dup[len] = '\0';
+
+	strcpy(dup, s);
+
+	return dup;
+}
+
+
 #ifndef BOGUS_HOST_USER_INCLUDED
 #define BOGUS_HOST_USER_INCLUDED
 class Host_user {
@@ -168,12 +188,12 @@ class Host_user {
 	const char *host;
 
 	 Host_user(const char *id, const char *host) {
-		this->id = strdup(id ? id : "");
-		this->host = strdup(host ? host : "localhost");
+		this->id = tracking_strdup(memory_key_b, id ? id : "");
+		this->host = tracking_strdup(memory_key_b, host ? host : "localhost");
 	};
 	~Host_user() {
-		free((void *)this->id);
-		free((void *)this->host);
+		tracking_free((void *)this->id);
+		tracking_free((void *)this->host);
 	};
 };
 #endif // BOGUS_HOST_USER_INCLUDED
@@ -186,7 +206,9 @@ void clear_all_users()
 	name_to_users.clear();
 
 	for (size_t i = 0; all_users[i] != nullptr; ++i) {
-		delete all_users[i];
+		all_users[i]->~Host_user(); /* destroy */
+		tracking_free(all_users[i]); /* free */
+		all_users[i]= nullptr;
 	}
 	tracking_free(all_users);
 	all_users = nullptr;
@@ -217,21 +239,21 @@ void load_all_users()
 		exit(EXIT_FAILURE);
 	}
 
-	all_users[0] = new Host_user("alice", "10.0.0.1");
-	all_users[1] = new Host_user("alice", "10.1.2.3");
-	all_users[2] = new Host_user("bob", "10.0.0.2");
-	all_users[3] = new Host_user("chris", "10.0.1.1");
-	all_users[4] = new Host_user("dirk", "10.0.1.2");
-	all_users[5] = new Host_user("eve", nullptr);
-	all_users[6] = new Host_user("eve", "10.0.0.2");
-	all_users[7] = new Host_user("eve", "10.0.1.2");
-	all_users[8] = new Host_user("eve", "10.0.2.2");
-	all_users[9] = new Host_user("eve", "10.0.3.2");
-	all_users[10] = new Host_user("eve", "10.8.0.2");
-	all_users[11] = new Host_user("frances", "10.0.1.2");
-	all_users[12] = new Host_user("glen", "10.8.0.7");
-	all_users[13] = new Host_user("harley", "10.8.0.7");
-	all_users[14] = new Host_user("ishta", "10.8.0.7");
+	all_users[0] = new(tracking_malloc(memory_key_b, size)) Host_user("alice", "10.0.0.1");
+	all_users[1] = new(tracking_malloc(memory_key_b, size)) Host_user("alice", "10.1.2.3");
+	all_users[2] = new(tracking_malloc(memory_key_b, size)) Host_user("bob", "10.0.0.2");
+	all_users[3] = new(tracking_malloc(memory_key_b, size)) Host_user("chris", "10.0.1.1");
+	all_users[4] = new(tracking_malloc(memory_key_b, size)) Host_user("dirk", "10.0.1.2");
+	all_users[5] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", nullptr);
+	all_users[6] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", "10.0.0.2");
+	all_users[7] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", "10.0.1.2");
+	all_users[8] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", "10.0.2.2");
+	all_users[9] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", "10.0.3.2");
+	all_users[10] = new(tracking_malloc(memory_key_b, size)) Host_user("eve", "10.8.0.2");
+	all_users[11] = new(tracking_malloc(memory_key_b, size)) Host_user("frances", "10.0.1.2");
+	all_users[12] = new(tracking_malloc(memory_key_b, size)) Host_user("glen", "10.8.0.7");
+	all_users[13] = new(tracking_malloc(memory_key_b, size)) Host_user("harley", "10.8.0.7");
+	all_users[14] = new(tracking_malloc(memory_key_b, size)) Host_user("ishta", "10.8.0.7");
 	all_users[15] = NULL;
 
 	build_name_to_users();
