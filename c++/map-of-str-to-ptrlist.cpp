@@ -18,6 +18,7 @@ to use a custom allocator which lacks a no-arg constructor.
 #include <limits>
 #include <string>
 #include <unordered_map>
+#include <scoped_allocator>
 #include <list>
 using namespace std;
 
@@ -196,46 +197,24 @@ class Host_user {
 #endif // BOGUS_HOST_USER_INCLUDED
 
 
-template <class T>
-class Tracking_allocator_d : public Tracking_allocator<T> {
-  public:
-    Tracking_allocator_d() : Tracking_allocator<T>(memory_key_d) {}
-  template <class U> struct rebind { typedef Tracking_allocator_d<U> other; };
-
-  template <class U> Tracking_allocator_d
-    (const Tracking_allocator_d<U> &other __attribute__((unused)))
-      : Tracking_allocator<T>(memory_key_d)
-  {}
-
-  template <class U> Tracking_allocator_d & operator=
-    (const Tracking_allocator_d<U> &other __attribute__((unused)))
-  {}
-
-};
-
 /* GLOBAL VARIABLES 2 */
 /* This unordered_map should use Tracking_allocator with memory_key_d */
 /* The list<Host_user *> should also allocate with memory_key_d */
-unordered_map <
-	string,
-	list < Host_user *, Tracking_allocator_d<Host_user *>>,
-	hash<string>,
-	equal_to<string>,
-	Tracking_allocator_d<
-		pair<const string,
-			list < Host_user *,
-				Tracking_allocator_d<Host_user *>
-			      >
-		    >
-	>
-> name_to_users;
+typedef Tracking_allocator<Host_user *> Host_user_ptr_allocator;
+typedef list < Host_user *, Host_user_ptr_allocator> Host_user_ptr_list;
+typedef Tracking_allocator< pair<const string, Host_user_ptr_list> > name_hu_pair_allocator;
+typedef scoped_allocator_adaptor< name_hu_pair_allocator, Host_user_ptr_allocator> Name_to_users_allocator;
+typedef unordered_map < string, Host_user_ptr_list, hash<string>, equal_to<string>, Name_to_users_allocator > Name_to_users_map;
+
+Name_to_users_map *name_to_users = nullptr;
 /* END GLOBAL VARIABLES 2 */
 
 void clear_all_users()
 {
 	if (!all_users) return;
 
-	name_to_users.clear();
+	delete name_to_users;
+	name_to_users = nullptr;
 
 	for (size_t i = 0; all_users[i] != nullptr; ++i) {
 		all_users[i]->~Host_user(); /* destroy */
@@ -250,11 +229,18 @@ void build_name_to_users()
 {
 	fprintf(stderr, "build_name_to_users()\n");
 	if (!all_users) return;
-	name_to_users.clear();
+	if (name_to_users) {
+		name_to_users->clear();
+	} else {
+		name_hu_pair_allocator outer(memory_key_d);
+		Host_user_ptr_allocator inner(memory_key_d);
+		Name_to_users_allocator adapter(outer, inner);
+		name_to_users = new Name_to_users_map(adapter);
+	}
 	for (size_t i = 0; all_users[i]; ++i) {
 		Host_user *hu = all_users[i];
 		string name = hu->id ? hu->id : "";
-		name_to_users[name].push_back(hu);
+		(*name_to_users)[name].push_back(hu);
 	}
 	fprintf(stderr, "build_name_to_users() done\n");
 }
@@ -297,7 +283,7 @@ int print_name_to_users(FILE *stream)
 {
 	int rv; /* printf returns negative if error */
 	int bytes_written = 0;
-	for (auto it = name_to_users.begin(); it != name_to_users.end(); ++it) {
+	for (auto it = (*name_to_users).begin(); it != (*name_to_users).end(); ++it) {
 		string name = it->first;
 		auto list = it->second;
 		rv = fprintf(stream, "%s => {\n", name.c_str());
