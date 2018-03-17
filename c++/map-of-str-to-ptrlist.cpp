@@ -24,7 +24,7 @@ using namespace std;
 typedef unsigned int Tracking_memory_key;
 class Host_user;
 
-/* GLOBAL VARIABLES */
+/* GLOBAL VARIABLES 1 */
 Tracking_memory_key memory_key_a; /* this is not const */
 Tracking_memory_key memory_key_b; /* this is not const */
 Tracking_memory_key memory_key_c; /* this is not const */
@@ -32,11 +32,8 @@ Tracking_memory_key memory_key_d; /* this is not const */
 Tracking_memory_key memory_key_e; /* this is not const */
 Tracking_memory_key memory_key_f; /* this is not const */
 Host_user **all_users= nullptr;
+/* END GLOBAL VARIABLES 1 */
 
-/* This unordered_map should use Tracking_allocator with memory_key_d */
-/* The list<Host_user *> should also allocate with memory_key_d */
-unordered_map < string, list < Host_user * >>name_to_users;
-/* END GLOBAL VARIABLES */
 
 
 void load_mem_tracking_keys(void)
@@ -199,6 +196,41 @@ class Host_user {
 #endif // BOGUS_HOST_USER_INCLUDED
 
 
+template <class T>
+class Tracking_allocator_d : public Tracking_allocator<T> {
+  public:
+    Tracking_allocator_d() : Tracking_allocator<T>(memory_key_d) {}
+  template <class U> struct rebind { typedef Tracking_allocator_d<U> other; };
+
+  template <class U> Tracking_allocator_d
+    (const Tracking_allocator_d<U> &other __attribute__((unused)))
+      : Tracking_allocator<T>(memory_key_d)
+  {}
+
+  template <class U> Tracking_allocator_d & operator=
+    (const Tracking_allocator_d<U> &other __attribute__((unused)))
+  {}
+
+};
+
+/* GLOBAL VARIABLES 2 */
+/* This unordered_map should use Tracking_allocator with memory_key_d */
+/* The list<Host_user *> should also allocate with memory_key_d */
+unordered_map <
+	string,
+	list < Host_user *, Tracking_allocator_d<Host_user *>>,
+	hash<string>,
+	equal_to<string>,
+	Tracking_allocator_d<
+		pair<const string,
+			list < Host_user *,
+				Tracking_allocator_d<Host_user *>
+			      >
+		    >
+	>
+> name_to_users;
+/* END GLOBAL VARIABLES 2 */
+
 void clear_all_users()
 {
 	if (!all_users) return;
@@ -216,6 +248,7 @@ void clear_all_users()
 
 void build_name_to_users()
 {
+	fprintf(stderr, "build_name_to_users()\n");
 	if (!all_users) return;
 	name_to_users.clear();
 	for (size_t i = 0; all_users[i]; ++i) {
@@ -223,6 +256,7 @@ void build_name_to_users()
 		string name = hu->id ? hu->id : "";
 		name_to_users[name].push_back(hu);
 	}
+	fprintf(stderr, "build_name_to_users() done\n");
 }
 
 void load_all_users()
@@ -265,7 +299,7 @@ int print_name_to_users(FILE *stream)
 	int bytes_written = 0;
 	for (auto it = name_to_users.begin(); it != name_to_users.end(); ++it) {
 		string name = it->first;
-		list < Host_user * >list = it->second;
+		auto list = it->second;
 		rv = fprintf(stream, "%s => {\n", name.c_str());
 		if (rv < 0) goto err_print_name_to_users;
 		bytes_written += rv;
