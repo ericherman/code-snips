@@ -221,12 +221,21 @@ typedef unordered_map < string, Host_user_ptr_list, hash<string>, equal_to<strin
 Name_to_users_map *name_to_users = nullptr;
 /* END GLOBAL VARIABLES 2 */
 
+void free_name_to_users(void)
+{
+	if (!name_to_users) return;
+
+	name_to_users->~unordered_map();
+	tracking_free(name_to_users);
+	name_to_users = nullptr;
+}
+
+
 void clear_all_users()
 {
-	if (!all_users) return;
+	free_name_to_users();
 
-	delete name_to_users;
-	name_to_users = nullptr;
+	if (!all_users) return;
 
 	for (size_t i = 0; all_users[i] != nullptr; ++i) {
 		all_users[i]->~Host_user(); /* destroy */
@@ -247,7 +256,10 @@ void build_name_to_users()
 		name_hu_pair_allocator outer(memory_key_d);
 		Host_user_ptr_allocator inner(memory_key_d);
 		Name_to_users_allocator adapter(outer, inner);
-		name_to_users = new Name_to_users_map(adapter);
+
+		size_t size= sizeof(Name_to_users_map);
+		name_to_users= new(tracking_malloc(memory_key_d, size))
+			Name_to_users_map(adapter);
 	}
 	for (size_t i = 0; all_users[i]; ++i) {
 		Host_user *hu = all_users[i];
