@@ -14,6 +14,7 @@ to use a custom allocator which lacks a no-arg constructor.
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 
 #include <limits>
 #include <string>
@@ -48,15 +49,26 @@ void load_mem_tracking_keys(void)
 }
 
 extern "C" void * tracking_malloc(Tracking_memory_key key, size_t size) {
-	void *ptr= malloc(size);
+	void *ptr= malloc(size + (sizeof(Tracking_memory_key)));
 	fprintf(stderr, "tracking_malloc(key=%lu, size=%lu)=%p\n", (unsigned long) key, (unsigned long) size, ptr);
-	return ptr;
+	*((Tracking_memory_key *)ptr) = key;
+	return (void *)(((char *)ptr) + sizeof(Tracking_memory_key));
 }
 
 extern "C" void tracking_free(void *ptr)
 {
-	fprintf(stderr, "tracking_free(%p)\n", ptr);
-	free(ptr);
+	Tracking_memory_key key;
+	char *pos;
+	if (((unsigned long)ptr) > sizeof(Tracking_memory_key)) {
+		pos = (((char *)ptr) - (sizeof(Tracking_memory_key)));
+		key = *((Tracking_memory_key*)pos);
+	} else {
+		key = (Tracking_memory_key)UINT_MAX;
+	}
+	fprintf(stderr, "tracking_free(%p), (key: %lu)\n", ptr, (unsigned long)key);
+	if (pos) {
+		free(pos);
+	}
 }
 
 /* Custom Allocator which requires a contructor argument */
