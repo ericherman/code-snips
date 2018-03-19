@@ -9,9 +9,11 @@ to use the std:: containers, however it is not straight-forward
 to use a custom allocator which lacks a no-arg constructor,
 especially in a container-of-containers setup.
 
-The solution arrived at here is to use a scoped_allocator which
-wraps an inner and an outer allocator, each with the desired
-constructor argument, and each of the desired types.
+The semi-solution arrived at here is to use a scoped_allocator
+which wraps an inner and an outer allocator, each with the desired
+constructor argument, and each of the desired types ... however,
+this is not 100% successful, as the list.sort(Custom_comparitor)
+seems to need yet-another allocator!
 
 Eric Herman <eric@freesa.org> 2018
 */
@@ -220,6 +222,20 @@ public:
 		tracking_free((void *)this->host);
 	};
 };
+
+class Host_user_compare :
+  public std::binary_function<Host_user, Host_user, bool>
+{
+public:
+  bool operator()(const Host_user &a, const Host_user &b)
+  {
+    return !(strcmp(a.host, b.host) <= 0 || strcmp(a.id, b.id) <= 0);
+  }
+  bool operator()(const Host_user *a, const Host_user *b)
+  {
+    return !(strcmp(a->host, b->host) <= 0 || strcmp(a->id, b->id) <= 0);
+  }
+};
 #endif // BOGUS_HOST_USER_INCLUDED
 
 
@@ -289,7 +305,10 @@ void build_name_to_users()
 	for (size_t i= 0; all_users[i]; ++i) {
 		Host_user *hu= all_users[i];
 		string name= hu->id ? hu->id : "";
-		(*name_to_users)[name].push_back(hu);
+		auto *list= &((*name_to_users)[name]);
+		list->push_back(hu);
+		// XXX: FIXME: FIXXXME: This sort complains about the allocator
+		// list->sort(Host_user_compare());
 	}
 
 end_build_name_to_users:
