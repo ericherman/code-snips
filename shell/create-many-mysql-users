@@ -1,0 +1,73 @@
+#!/bin/bash
+
+while getopts ":b:p:n:" opt; do
+	case $opt in
+	b)
+		MYSQLD_BASE_DIR="$OPTARG"
+		;;
+	p)
+		MYSQLD_PORT="$OPTARG"
+		;;
+	n)
+		NUMBER_OF_USERS="$OPTARG"
+		;;
+	\?)
+		echo "Unknown Option: -$OPTARG" >&2
+		exit 1
+		;;
+	:)
+		echo "Option -$OPTARG requires an argument" >&2
+		exit 1
+		;;
+	esac
+done
+
+if [ "_${NUMBER_OF_USERS}_" == "__" ]; then
+	#NUMBER_OF_USERS=32768
+	NUMBER_OF_USERS=1
+fi
+
+if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
+	MYSQLD_BASE_DIR=$1
+fi
+if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
+	echo "Option '-b basedir' must be set"
+	exit 1
+fi
+
+TMPFILE=/tmp/${UID}_create-many-users.sql
+rm -fv $TMPFILE
+i=0;
+while [ $i -lt $NUMBER_OF_USERS ]; do
+	i=$(($i + 1));
+	USR=$(printf "user%07d" $i)
+	PAS=none
+	for HST in "localhost" "10.0.%" "10.1.%" "10.2.%" "10.3.%" "%.example.com"; do
+		echo "CREATE USER IF NOT EXISTS '$USR'@'$HST' IDENTIFIED WITH mysql_native_password BY '$PAS';" >> $TMPFILE;
+	done
+done
+
+
+MYSQLD_BIN_DIR=${MYSQLD_BASE_DIR}/bin
+MYSQL="$MYSQLD_BIN_DIR/mysql --host=127.0.0.1 --port=$MYSQLD_PORT --user=root"
+
+echo
+echo MYSQLD_BASE_DIR=$MYSQLD_BASE_DIR
+echo MYSQLD_BIN_DIR =$MYSQLD_BIN_DIR
+echo MYSQLD_PORT    =$MYSQLD_PORT
+echo MYSQL          =$MYSQL
+echo
+
+
+$MYSQL <<< 'SELECT COUNT(*) AS _cnt FROM mysql.user'
+$MYSQL <<< 'SELECT u.user, COUNT(*) AS _cnt FROM mysql.user u WHERE u.user = "user0000001" GROUP BY u.user'
+$MYSQL <<< 'SELECT u.host, COUNT(*) AS _cnt FROM mysql.user u WHERE u.host = "localhost" GROUP BY u.host'
+$MYSQL <<< 'SELECT "localhost", COUNT(*) AS _cnt FROM mysql.user u WHERE u.host = "127.0.0.1" OR u.host = "localhost" OR u.host = "::1"'
+
+echo creating users with $TMPFILE
+$MYSQL < $TMPFILE
+
+$MYSQL <<< 'SELECT COUNT(*) AS _cnt FROM mysql.user'
+$MYSQL <<< 'SELECT u.user, COUNT(*) AS _cnt FROM mysql.user u WHERE u.user = "user0000001" GROUP BY u.user'
+$MYSQL <<< 'SELECT u.host, COUNT(*) AS _cnt FROM mysql.user u WHERE u.host = "localhost" GROUP BY u.host'
+$MYSQL <<< 'SELECT "localhost", COUNT(*) AS _cnt FROM mysql.user u WHERE u.host = "127.0.0.1" OR u.host = "localhost" OR u.host = "::1"'
