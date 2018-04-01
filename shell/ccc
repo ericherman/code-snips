@@ -4,7 +4,7 @@ AOUT=$(basename --suffix='.c' $1);
 
 gcc \
  -Wall -Wextra -Wpedantic -Werror \
- -ggdb \
+ -ggdb -pipe \
  $CFLAGS \
  -include alloca.h \
  -include assert.h \
