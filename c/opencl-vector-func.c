@@ -259,9 +259,18 @@ int main(int argc, char **argv)
 	}
 	fflush(stdout);
 
-	/* Clean up */
+	/* let's clean up a bit before free-ing*/
 	ret = clFlush(command_queue);
+	assert_long_equal_msg(ret, CL_SUCCESS, "clFlush(command_queue)");
+	printf("clFlush(command_queue)\n");
+	fflush(stdout);
+
 	ret = clFinish(command_queue);
+	assert_long_equal_msg(ret, CL_SUCCESS, "clFinish(command_queue)");
+	printf("clFinish(command_queue)\n");
+	fflush(stdout);
+
+	/* free up memory */
 	ret = clReleaseKernel(kernel);
 	ret = clReleaseProgram(program);
 	ret = clReleaseMemObject(res_mem_obj);
