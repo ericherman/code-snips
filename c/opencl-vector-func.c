@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 #endif
 		if (buf) {
 			free(buf);
+			buf = NULL;
 		}
 	}
 	src_len = strlen(src_str);
@@ -199,6 +200,7 @@ int main(int argc, char **argv)
 	fflush(stdout);
 	if (buf) {
 		free(buf);
+		buf = NULL;
 	}
 
 /*
