@@ -127,6 +127,7 @@ int main(int argc, char **argv)
 		input_b[i] = List_len / (1.0 + i);
 	}
 
+	buf_size = 0;
 	if (argc > 1) {
 		src_str = slurp_file_to_string(argv[1], &buf_size);
 	}
