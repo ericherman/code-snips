@@ -55,52 +55,9 @@ const char *opencl_vector_float_func_src =	/*        these comments  */
     "{\n"			/*                        all the strings */
     "\tint i = get_global_id(0);\n"	/*                together on two */
     "\tresult[i] = input_a[i] * input_b[i];\n"	/*        or three lines  */
-    "}\n";			/*    I wish C had multi-line strings.... */
+    "}\n";			/*                                        */
 
-char *slurp_file_to_string(const char *file_path, size_t *buf_size)
-{
-	FILE *fp;
-	struct stat st;
-	size_t size;
-	char *str;
-
-	if (buf_size) {
-		*buf_size = 0;
-	}
-	str = NULL;
-	stat(file_path, &st);
-	size = (size_t)st.st_size;
-	if (size == SIZE_MAX) {
-		return NULL;
-	}
-
-	fp = fopen(file_path, "r");
-	if (!fp) {
-		return NULL;
-	}
-
-	/* add one to ensure speace for a null termination */
-	str = malloc(size + 1U);
-	if (!str) {
-		fclose(fp);
-		return NULL;
-	}
-	if (buf_size) {
-		*buf_size = size + 1U;
-	}
-
-	if (size != fread(str, 1U, size, fp)) {
-		free(str);
-		str = NULL;
-		if (buf_size) {
-			*buf_size = 0;
-		}
-	}
-	str[size] = '\0';
-
-	fclose(fp);
-	return str;
-}
+char *slurp_file_to_string(const char *file_path, size_t *buf_size);
 
 int main(int argc, char **argv)
 {
@@ -322,4 +279,49 @@ int main(int argc, char **argv)
 	free(result);
 
 	return 0;
+}
+
+char *slurp_file_to_string(const char *file_path, size_t *buf_size)
+{
+	FILE *fp;
+	struct stat st;
+	size_t size;
+	char *str;
+
+	if (buf_size) {
+		*buf_size = 0;
+	}
+	str = NULL;
+	stat(file_path, &st);
+	size = (size_t)st.st_size;
+	if (size == SIZE_MAX) {
+		return NULL;
+	}
+
+	fp = fopen(file_path, "r");
+	if (!fp) {
+		return NULL;
+	}
+
+	/* add one to ensure speace for a null termination */
+	str = malloc(size + 1U);
+	if (!str) {
+		fclose(fp);
+		return NULL;
+	}
+	if (buf_size) {
+		*buf_size = size + 1U;
+	}
+
+	if (size != fread(str, 1U, size, fp)) {
+		free(str);
+		str = NULL;
+		if (buf_size) {
+			*buf_size = 0;
+		}
+	}
+	str[size] = '\0';
+
+	fclose(fp);
+	return str;
 }
