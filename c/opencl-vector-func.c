@@ -128,9 +128,8 @@ int main(int argc, char **argv)
 	printf("platform_id: %ld\n", (long)platform_id);
 	fflush(stdout);
 
-	ret =
-	    clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, num_entries,
-			   &device_id, &ret_num_devices);
+	ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ALL, num_entries,
+			     &device_id, &ret_num_devices);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clGetDeviceIDs");
 	printf("device_id: %ld\n", (long)device_id);
 	fflush(stdout);
@@ -167,9 +166,8 @@ int main(int argc, char **argv)
 	printf("b_mem_obj: %p\n", (void *)b_mem_obj);
 	fflush(stdout);
 
-	res_mem_obj =
-	    clCreateBuffer(context, CL_MEM_WRITE_ONLY, array_bytes_len, NULL,
-			   &ret);
+	res_mem_obj = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
+				     array_bytes_len, NULL, &ret);
 	assert_long_equal_msg(ret, CL_SUCCESS, "res_mem_obj = clCreateBuffer");
 	assert_msg((res_mem_obj != NULL), "res_mem_obj");
 	printf("res_mem_obj: %p\n", (void *)res_mem_obj);
@@ -177,16 +175,14 @@ int main(int argc, char **argv)
 
 	/* Copy the lists input_a and input_b to their buffers */
 	offset = 0;
-	ret =
-	    clEnqueueWriteBuffer(command_queue, a_mem_obj, CL_TRUE, offset,
-				 array_bytes_len, input_a, 0, NULL, NULL);
+	ret = clEnqueueWriteBuffer(command_queue, a_mem_obj, CL_TRUE, offset,
+				   array_bytes_len, input_a, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueWriteBuffer(q, a_mem");
 	printf("clEnqueueWriteBuffer\n");
 	fflush(stdout);
 
-	ret =
-	    clEnqueueWriteBuffer(command_queue, b_mem_obj, CL_TRUE, offset,
-				 array_bytes_len, input_b, 0, NULL, NULL);
+	ret = clEnqueueWriteBuffer(command_queue, b_mem_obj, CL_TRUE, offset,
+				   array_bytes_len, input_b, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueWriteBuffer(q, b_mem");
 	printf("clEnqueueWriteBuffer\n");
 	fflush(stdout);
@@ -243,18 +239,16 @@ int main(int argc, char **argv)
 	/* Execute the OpenCL kernel on the list */
 	global_item_size = List_len;	/* Process the entire lists */
 	process_in_groups_of = 64;	/* Process in groups of 64 */
-	ret =
-	    clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,
-				   &global_item_size, &process_in_groups_of, 0,
-				   NULL, NULL);
+	ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,
+				     &global_item_size, &process_in_groups_of,
+				     0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueNDRangeKernel");
 	printf("clEnqueueNDRangeKernel\n");
 	fflush(stdout);
 
 	/* Read the memory buffer result on the device to the local result */
-	ret =
-	    clEnqueueReadBuffer(command_queue, res_mem_obj, CL_TRUE, 0,
-				array_bytes_len, result, 0, NULL, NULL);
+	ret = clEnqueueReadBuffer(command_queue, res_mem_obj, CL_TRUE, 0,
+				  array_bytes_len, result, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueReadBuffer");
 	printf("clEnqueueReadBuffer\n");
 	fflush(stdout);
@@ -270,15 +264,15 @@ int main(int argc, char **argv)
 	ret = clFinish(command_queue);
 	ret = clReleaseKernel(kernel);
 	ret = clReleaseProgram(program);
-	ret = clReleaseMemObject(a_mem_obj);
-	ret = clReleaseMemObject(b_mem_obj);
 	ret = clReleaseMemObject(res_mem_obj);
+	ret = clReleaseMemObject(b_mem_obj);
+	ret = clReleaseMemObject(a_mem_obj);
 	ret = clReleaseCommandQueue(command_queue);
 	ret = clReleaseContext(context);
 
-	free(input_a);
-	free(input_b);
 	free(result);
+	free(input_b);
+	free(input_a);
 
 	return 0;
 }
