@@ -39,7 +39,7 @@
 		exit(EXIT_FAILURE); } \
 	} while (0)
 
-char *nop_opencl_vector_float_func_src =	/*        these comments  */
+const char *nop_opencl_vector_float_func_src =	/*        these comments  */
     "__kernel void vector_float_func(\n"	/*        are just to     */
     "\t\t__global float *a,\n"	/*                        keep the code   */
     "\t\t__global float *b,\n"	/*                        auto formatter  */
@@ -47,7 +47,7 @@ char *nop_opencl_vector_float_func_src =	/*        these comments  */
     "{\n"			/*                        all the strings */
     "}\n";			/*                        on fewer lines  */
 
-char *opencl_vector_float_func_src =	/*                these comments  */
+const char *opencl_vector_float_func_src =	/*        these comments  */
     "__kernel void vector_float_func(\n"	/*        are just to     */
     "\t\t__global float *input_a,\n"	/*                keep the code   */
     "\t\t__global float *input_b,\n"	/*                auto formatter  */
@@ -110,7 +110,8 @@ int main(int argc, char **argv)
 	float *input_a, *input_b, *result;
 	size_t i, offset, buf_size, src_len;
 	size_t global_item_size, process_in_groups_of;
-	char *src_str = NULL;
+	char *buf = NULL;
+	const char *src_str;
 
 	cl_uint num_entries, num_devices;
 	cl_uint ret_num_devices, ret_num_platforms;
@@ -140,10 +141,11 @@ int main(int argc, char **argv)
 
 	buf_size = 0;
 	if (argc > 1) {
-		src_str = slurp_file_to_string(argv[1], &buf_size);
+		buf = slurp_file_to_string(argv[1], &buf_size);
 	}
-	if (src_str && buf_size > 1) {
+	if (buf && buf_size > 1) {
 		printf("using %s\n", argv[1]);
+		src_str = buf;
 	} else {
 #if DEFAULT_TO_NOP
 		printf("using nop_opencl_vector_float_func_src\n");
@@ -152,9 +154,8 @@ int main(int argc, char **argv)
 		printf("using opencl_vector_float_func_src\n");
 		src_str = opencl_vector_float_func_src;
 #endif
-		if (buf_size) {
-			free(src_str);
-			buf_size = 0;
+		if (buf) {
+			free(buf);
 		}
 	}
 	src_len = strlen(src_str);
@@ -239,9 +240,8 @@ int main(int argc, char **argv)
 	assert_msg((program != NULL), "program obj");
 	printf("program:%p\n", (void *)program);
 	fflush(stdout);
-	if (buf_size) {
-		free(src_str);
-		buf_size = 0;
+	if (buf) {
+		free(buf);
 	}
 
 /*
