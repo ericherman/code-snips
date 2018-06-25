@@ -61,8 +61,8 @@ char *slurp_file_to_string(const char *file_path, size_t *buf_size);
 
 int main(int argc, char **argv)
 {
-	const size_t List_len = 1024U;
-	size_t array_bytes_len = List_len * sizeof(float);
+	const size_t Array_len = 1024U;
+	size_t Array_bytes_size = Array_len * sizeof(float);
 
 	float *input_a, *input_b, *result;
 	size_t i, offset, buf_size, src_len;
@@ -85,15 +85,15 @@ int main(int argc, char **argv)
 	cl_mem res_mem_obj = NULL;
 
 	/* Create the two local input arrays and a local output array */
-	input_a = malloc(array_bytes_len);
-	input_b = malloc(array_bytes_len);
-	result = calloc(1, array_bytes_len);
+	input_a = malloc(Array_bytes_size);
+	input_b = malloc(Array_bytes_size);
+	result = calloc(1, Array_bytes_size);
 	assert_msg((input_a && input_b && result), "allocating arrays");
 
 	/* initialize input arrays with some arbitrary values */
-	for (i = 0; i < List_len; i++) {
+	for (i = 0; i < Array_len; i++) {
 		input_a[i] = 1.0 * i;
-		input_b[i] = List_len / (1.0 + i);
+		input_b[i] = Array_len / (1.0 + i);
 	}
 
 	buf_size = 0;
@@ -152,14 +152,14 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	/* Create memory buffers on the device for each local vector */
-	a_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY, array_bytes_len,
+	a_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY, Array_bytes_size,
 				   NULL, &ret);
 	assert_long_equal_msg(ret, CL_SUCCESS, "a_mem_obj = clCreateBuffer");
 	assert_msg((a_mem_obj != NULL), "a_mem_obj");
 	printf("a_mem_obj: %p\n", (void *)a_mem_obj);
 	fflush(stdout);
 
-	b_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY, array_bytes_len,
+	b_mem_obj = clCreateBuffer(context, CL_MEM_READ_ONLY, Array_bytes_size,
 				   NULL, &ret);
 	assert_long_equal_msg(ret, CL_SUCCESS, "b_mem_obj = clCreateBuffer");
 	assert_msg((b_mem_obj != NULL), "b_mem_obj");
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	res_mem_obj = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
-				     array_bytes_len, NULL, &ret);
+				     Array_bytes_size, NULL, &ret);
 	assert_long_equal_msg(ret, CL_SUCCESS, "res_mem_obj = clCreateBuffer");
 	assert_msg((res_mem_obj != NULL), "res_mem_obj");
 	printf("res_mem_obj: %p\n", (void *)res_mem_obj);
@@ -176,13 +176,13 @@ int main(int argc, char **argv)
 	/* Copy the lists input_a and input_b to their buffers */
 	offset = 0;
 	ret = clEnqueueWriteBuffer(command_queue, a_mem_obj, CL_TRUE, offset,
-				   array_bytes_len, input_a, 0, NULL, NULL);
+				   Array_bytes_size, input_a, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueWriteBuffer(q, a_mem");
 	printf("clEnqueueWriteBuffer\n");
 	fflush(stdout);
 
 	ret = clEnqueueWriteBuffer(command_queue, b_mem_obj, CL_TRUE, offset,
-				   array_bytes_len, input_b, 0, NULL, NULL);
+				   Array_bytes_size, input_b, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueWriteBuffer(q, b_mem");
 	printf("clEnqueueWriteBuffer\n");
 	fflush(stdout);
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	/* Execute the OpenCL kernel on the list */
-	global_item_size = List_len;	/* Process the entire lists */
+	global_item_size = Array_len;	/* Process the entire lists */
 	process_in_groups_of = 64;	/* Process in groups of 64 */
 	ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL,
 				     &global_item_size, &process_in_groups_of,
@@ -248,18 +248,18 @@ int main(int argc, char **argv)
 
 	/* Read the memory buffer result on the device to the local result */
 	ret = clEnqueueReadBuffer(command_queue, res_mem_obj, CL_TRUE, 0,
-				  array_bytes_len, result, 0, NULL, NULL);
+				  Array_bytes_size, result, 0, NULL, NULL);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clEnqueueReadBuffer");
 	printf("clEnqueueReadBuffer\n");
 	fflush(stdout);
 
 	/* Display the local result to the screen */
-	for (i = 0; i < List_len; i++) {
+	for (i = 0; i < Array_len; i++) {
 		printf("%g, %g = %g\n", input_a[i], input_b[i], result[i]);
 	}
 	fflush(stdout);
 
-	/* let's clean up a bit before free-ing*/
+	/* let's clean up a bit before free-ing */
 	ret = clFlush(command_queue);
 	assert_long_equal_msg(ret, CL_SUCCESS, "clFlush(command_queue)");
 	printf("clFlush(command_queue)\n");
