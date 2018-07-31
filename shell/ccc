@@ -2,8 +2,11 @@
 
 AOUT=$(basename --suffix='.c' $1);
 
+#NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
+NOISY_FLAGS='-Wall -Wextra -Wpedantic'
+
 gcc \
- -Wall -Wextra -Wpedantic -Werror \
+ $NOISY_FLAGS \
  -ggdb -pipe \
  $CFLAGS \
  -include alloca.h \
@@ -33,4 +36,5 @@ gcc \
  -include time.h \
  -include unistd.h \
  -o $AOUT \
- $1 && ls -l $AOUT
+ $1 -lm $LDFLAGS && \
+ ls -l $AOUT
