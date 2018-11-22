@@ -29,7 +29,11 @@
    but string keys must first be converted to a numeric key for
    this to work. While this is far form a deep look, at a glance
    it seems that just about any hashing when combined with
-   jumphash is fine.
+   jumphash is fine, for the types of string keys which I am
+   using. The examples above of using COPYING and `seq 100000`
+   are not very representative interesting keys. Of course the
+   type and length of input strings can have a very large impact
+   thus if you are interested, try with your kinds of keys.
 */
 
 #ifndef DEFAULT_NUM_BUCKETS
@@ -37,6 +41,7 @@
 #endif
 
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -381,6 +386,33 @@ unsigned int murmur_hash_str(const char *str, size_t len)
 	return hash;
 }
 
+#define Rol_size_val_pos(size_bytes, val, positions) \
+	( ((val) << ((positions) % ((size_bytes) * CHAR_BIT))) \
+	| ((val) >> (((size_bytes) * CHAR_BIT) \
+		- ((positions) % ((size_bytes) * CHAR_BIT)))) )
+
+#define Ror_size_val_pos(size_bytes, val, positions) \
+	( ((val) >> ((positions) % ((size_bytes) * CHAR_BIT))) \
+	| ((val) << (((size_bytes) * CHAR_BIT) \
+		- ((positions) % ((size_bytes) * CHAR_BIT)))) )
+
+/* dumb idea; better than kr1, but for short strings, not even as good as kr2 */
+unsigned int xorrot_hash_str(const char *str, size_t str_len)
+{
+	unsigned int hash;
+	size_t i, bits;
+
+	hash = 0;
+	for (i = 0; i < str_len; ++i) {
+		hash ^= Ror_size_val_pos(sizeof(unsigned), (unsigned)str[i], i);
+		hash ^= Rol_size_val_pos(sizeof(unsigned), (unsigned)str[i], i);
+		hash ^= hash >> CHAR_BIT;
+		hash ^= hash << CHAR_BIT;
+	}
+
+	return hash;
+}
+
 /* https://github.com/ericherman/libjumphash */
 /* see also: http://random.mat.sbg.ac.at/results/karl/server/node5.html */
 #define Linear_Congruential_Generator_64 2862933555777941757ULL
@@ -516,11 +548,11 @@ int main(int argc, char **argv)
 	char buf[MAX_WORD_LEN];
 	unsigned int hashcode;
 	unsigned int *kr2, *kr1, *djb2, *djb2xor, *sdbm, *paul, *level, *sip,
-	    *murmur;
+	    *murmur, *xorrot;
 	double t0, t_kr2, t_kr1, t_djb2, t_djb2xor, t_sdbm, t_paul, t_level,
-	    t_sip, t_murmur;
+	    t_sip, t_murmur, t_xorrot;
 	struct simple_stats_s ss_kr2, ss_kr1, ss_djb2, ss_djb2xor, ss_sdbm,
-	    ss_paul, ss_level, ss_sip, ss_murmur;
+	    ss_paul, ss_level, ss_sip, ss_murmur, ss_xorrot;
 
 	num_buckets = (argc > 1) ? strtoul(argv[1], NULL, 10) : 0;
 	force_consistent_hashing = (argc > 2) ? atoi(argv[2]) : 1;
@@ -532,7 +564,7 @@ int main(int argc, char **argv)
 	}
 
 	t_kr2 = t_kr1 = t_djb2 = t_djb2xor = t_sdbm = t_paul = t_level = 0;
-	t_sip = t_murmur = 0;
+	t_sip = t_murmur = t_xorrot = 0;
 
 	simple_stats_init(&ss_kr2);
 	simple_stats_init(&ss_kr1);
@@ -543,6 +575,7 @@ int main(int argc, char **argv)
 	simple_stats_init(&ss_level);
 	simple_stats_init(&ss_sip);
 	simple_stats_init(&ss_murmur);
+	simple_stats_init(&ss_xorrot);
 
 	kr2 = calloc(sizeof(unsigned int), num_buckets);
 	kr1 = calloc(sizeof(unsigned int), num_buckets);
@@ -553,9 +586,10 @@ int main(int argc, char **argv)
 	level = calloc(sizeof(unsigned int), num_buckets);
 	sip = calloc(sizeof(unsigned int), num_buckets);
 	murmur = calloc(sizeof(unsigned int), num_buckets);
+	xorrot = calloc(sizeof(unsigned int), num_buckets);
 
 	if (!kr2 || !kr1 || !djb2 || !djb2xor || !sdbm || !paul || !level
-	    || !sip || !murmur) {
+	    || !sip || !murmur || !xorrot) {
 		fprintf(stderr, "failed to calloc(%lu, %lu)?\n",
 			(unsigned long)(sizeof(unsigned int)),
 			(unsigned long)num_buckets);
@@ -579,12 +613,13 @@ int main(int argc, char **argv)
 		Hash_it(leveldb_hash_str, t_level, level);
 		Hash_it(sip_hash_str, t_sip, sip);
 		Hash_it(murmur_hash_str, t_murmur, murmur);
+		Hash_it(xorrot_hash_str, t_xorrot, xorrot);
 	}
 
 	if (verbose) {
-		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 		       "kr2", "kr1", "djb2", "djb2xor", "sdbm", "paul",
-		       "leveldb", "sip", "murmur");
+		       "leveldb", "sip", "murmur", "xorrot");
 	}
 	for (i = 0; i < num_buckets; ++i) {
 		simple_stats_append_val(&ss_kr2, kr2[i]);
@@ -596,10 +631,11 @@ int main(int argc, char **argv)
 		simple_stats_append_val(&ss_level, level[i]);
 		simple_stats_append_val(&ss_sip, sip[i]);
 		simple_stats_append_val(&ss_murmur, murmur[i]);
+		simple_stats_append_val(&ss_xorrot, xorrot[i]);
 		if (verbose) {
-			printf("%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\n",
+			printf("%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\n",
 			       kr2[i], kr1[i], djb2[i], djb2xor[i], sdbm[i],
-			       paul[i], level[i], sip[i], murmur[i]);
+			       paul[i], level[i], sip[i], murmur[i], xorrot[i]);
 		}
 	}
 	if (verbose) {
@@ -620,6 +656,7 @@ int main(int argc, char **argv)
 	_print_stats(&ss_level, "level", t_level, bessel_correct);
 	_print_stats(&ss_sip, "sip", t_sip, bessel_correct);
 	_print_stats(&ss_murmur, "murmur", t_murmur, bessel_correct);
+	_print_stats(&ss_xorrot, "xorrot", t_xorrot, bessel_correct);
 
 	return 0;
 }
