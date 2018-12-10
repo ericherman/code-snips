@@ -1,10 +1,10 @@
-/* sieve-of-eratosthenes-pthreads.c : demo pthreads by finding primes
+/* sieve-of-eratosthenes-atomic.c : demo threads and atomics by finding primes
    Copyright (C) 2018 Eric Herman <eric@freesa.org>
    License: LGPL v2.1 or any later version */
 
 /* gcc -g -Wall -Werror -O2 -DNDEBUG \
-	-o sieve-of-eratosthenes-pthreads \
-	sieve-of-eratosthenes-pthreads.c \
+	-o sieve-of-eratosthenes-atomic \
+	sieve-of-eratosthenes-atomic.c \
 	-pthread
 */
 
@@ -64,13 +64,10 @@ static int is_hyperthreaded_x86(void)
 #endif /* Cpu_looks_like_x86 */
 
 struct sieve_context_s {
-	pthread_mutex_t *byte_mutexes;
-	size_t byte_mutexes_len;
 	uint64_t max;
 	unsigned char *primes;
 	size_t primes_len;
-	uint64_t i;
-	pthread_mutex_t i_mutex;
+	_Atomic uint64_t i;
 };
 
 struct mark_context_s {
@@ -100,7 +97,7 @@ static void set_bit(unsigned char *bytes, size_t bytes_len, uint64_t index,
 		    unsigned val)
 {
 	size_t byte;
-	unsigned char offset;
+	unsigned char offset, mask;
 
 	get_byte_and_offset(bytes_len, index, &byte, &offset);
 
@@ -109,9 +106,13 @@ static void set_bit(unsigned char *bytes, size_t bytes_len, uint64_t index,
 	/* bytes[byte] ^= (-val ^ bytes[byte]) & (1U << offset); */
 	/* instead, be a bit more verbose and trust the optimizer */
 	if (val) {
-		bytes[byte] |= (1U << offset);
+		mask = (1U << offset);
+		/* bytes[byte] |= bit; */
+		__atomic_fetch_or(bytes + byte, mask, __ATOMIC_SEQ_CST);
 	} else {
-		bytes[byte] &= ~(1U << offset);
+		mask = ~(1U << offset);
+		/* bytes[byte] &= mask; */
+		__atomic_fetch_and(bytes + byte, mask, __ATOMIC_SEQ_CST);
 	}
 }
 
@@ -130,26 +131,10 @@ static uint64_t primes_index(uint64_t index)
 	return (index - 3) / 2;
 }
 
-static pthread_mutex_t *get_mutex_for_number(struct sieve_context_s *ctx,
-					     uint64_t num)
-{
-	size_t i, byte;
-	unsigned char offset;
-
-	get_byte_and_offset(ctx->primes_len, primes_index(num), &byte, &offset);
-	i = byte % ctx->byte_mutexes_len;
-	return &(ctx->byte_mutexes[i]);
-}
-
 static void set_not_prime(struct sieve_context_s *ctx, uint64_t number)
 {
-	pthread_mutex_t *mutex;
-
 	if ((number % 2) != 0) {
-		mutex = get_mutex_for_number(ctx, number);
-		pthread_mutex_lock(mutex);
 		set_bit(ctx->primes, ctx->primes_len, primes_index(number), 0);
-		pthread_mutex_unlock(mutex);
 	}
 }
 
@@ -167,18 +152,6 @@ static unsigned is_prime(struct sieve_context_s *ctx, uint64_t number)
 	return get_bit(ctx->primes, ctx->primes_len, primes_index(number));
 }
 
-static uint64_t next_i(struct sieve_context_s *ctx)
-{
-	uint64_t n;
-
-	pthread_mutex_lock(&(ctx->i_mutex));
-	n = ctx->i;
-	ctx->i += 2;
-	pthread_mutex_unlock(&(ctx->i_mutex));
-
-	return n;
-}
-
 static void *mark_non_primes(void *param)
 {
 	uint64_t i, j;
@@ -187,7 +160,9 @@ static void *mark_non_primes(void *param)
 
 	sched_yield();
 
-	for (i = next_i(ctx); (i * 2) <= ctx->max; i = next_i(ctx)) {
+	for (i = __atomic_fetch_add(&(ctx->i), 2, __ATOMIC_SEQ_CST);
+	     (i * 2) <= ctx->max;
+	     i = __atomic_fetch_add(&(ctx->i), 2, __ATOMIC_SEQ_CST)) {
 		if (is_prime(ctx, i)) {
 			if (mctx->verbose) {
 				printf("thread %3u: marking for  %10" PRIu64
@@ -221,13 +196,10 @@ int main(int argc, char **argv)
 	void *res;
 
 	verbose = 0;
-	ctx.byte_mutexes = NULL;
-	ctx.byte_mutexes_len = 0;
 	ctx.max = 0;
 	ctx.primes = NULL;
 	ctx.primes_len = 0;
 	ctx.i = 3;
-	pthread_mutex_init(&(ctx.i_mutex), NULL);
 
 	if (argc > 1) {
 		sscanf(argv[1], "%" SCNu64 "", &(ctx.max));
@@ -271,19 +243,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	/* let's have more byte mutexes than cores to reduce odds */
-	ctx.byte_mutexes_len = 2 * cores;
-	ctx.byte_mutexes =
-	    calloc(ctx.byte_mutexes_len, sizeof(pthread_mutex_t));
-	if (!ctx.byte_mutexes) {
-		size = ctx.byte_mutexes_len * sizeof(pthread_mutex_t);
-		fprintf(stderr, "failed to malloc %zu bytes?\n", size);
-		return 1;
-	}
-	for (i = 0; i < ctx.byte_mutexes_len; ++i) {
-		pthread_mutex_init(&(ctx.byte_mutexes[i]), NULL);
-	}
-
 	mctx = calloc(cores, sizeof(struct mark_context_s));
 	if (!threads) {
 		size = cores * sizeof(struct mark_context_s);
@@ -314,13 +273,8 @@ int main(int argc, char **argv)
 
 #ifndef NDEBUG
 	free(mctx);
-	for (i = 0; i < ctx.byte_mutexes_len; ++i) {
-		pthread_mutex_destroy(&(ctx.byte_mutexes[i]));
-	}
-	free(ctx.byte_mutexes);
 	free(threads);
 	free(ctx.primes);
-	pthread_mutex_destroy(&(ctx.i_mutex));
 #endif
 	return 0;
 }

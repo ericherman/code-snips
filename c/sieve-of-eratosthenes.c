@@ -2,7 +2,7 @@
    Copyright (C) 2018 Eric Herman <eric@freesa.org>
    License: LGPL v2.1 or any later version */
 
-/* gcc -Wall -Werror -O2 -DNDEBUG \
+/* gcc -g -Wall -Werror -O2 -DNDEBUG \
 	-o sieve-of-eratosthenes \
 	sieve-of-eratosthenes.c
 */
