@@ -17,6 +17,9 @@
 #include <stdio.h>		/* printf */
 #include <stdlib.h>		/* malloc, free */
 #include <string.h>		/* memmove, memcpy */
+#include <limits.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #ifndef CHAR_BIT
 #define CHAR_BIT 8
@@ -31,8 +34,7 @@ gcc -std=c89 -Wall -Wextra -Wpedantic -Werror \
 
 #define MAKE_VALGRIND_HAPPY 0
 
-size_t factorial(size_t n);
-unsigned safe_mul_size_t(size_t lhs, size_t rhs, size_t *result);
+size_t factorial_size_t(size_t n);
 
 /* allows caller to fetch a specific lexicographic zero-indexed permutation */
 void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
@@ -57,7 +59,7 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 	d = (unsigned char *)dest;	/* allow ptr math */
 
 	for (i = 0; idx && i < len - 1; ++i) {
-		num_perms = factorial(len - i - 1);
+		num_perms = factorial_size_t(len - i - 1);
 		if (!num_perms) {
 			fprintf(stderr, "factorial(%lu) overflows\n",
 				(unsigned long)(len - i - 1));
@@ -85,7 +87,140 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 	return dest;
 }
 
-unsigned safe_mul_size_t(size_t lhs, size_t rhs, size_t *result)
+/* in-lined from factorial_size_t.c */
+/* ULS(x)? Unsigned Long Safe ?
+ * if the architecture is bigger that 64 bit, fall back */
+#define ULS(v) ((v <= ULONG_MAX) && (ULONG_MAX <= UINT64_MAX))
+
+#define TWELVE_FACT \
+ (2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL)
+
+#if ((ULONG_MAX) && (ULONG_MAX <= UINT64_MAX))
+const unsigned long ulfactorials[] = {
+	(1UL),
+	(1UL),
+	(2UL),
+	(2UL * 3UL),
+	(2UL * 3UL * 4UL),
+	(2UL * 3UL * 4UL * 5UL),
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL),
+#endif
+#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL))
+	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL))
+	(TWELVE_FACT * 13UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL))
+	(TWELVE_FACT * 13UL * 14UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL),
+#endif
+#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL * 20UL))
+	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL * 20UL),
+#endif
+	(0)
+};
+
+const size_t max_ulfactorial =
+    (((sizeof(ulfactorials) / sizeof(unsigned long))) - 2);
+#endif
+
+#ifndef Size_t_is_ul32
+#ifdef SIZE_MAX
+#ifdef UINT32_MAX
+#ifdef ULONG_MAX
+#define Size_t_is_ul32 ((SIZE_MAX == UINT32_MAX) && (SIZE_MAX <= ULONG_MAX))
+#endif
+#endif
+#endif
+#endif
+#ifndef Size_t_is_ul32
+#define Size_t_is_ul32 0
+#endif
+
+#ifndef Size_t_is_ul64
+#ifdef SIZE_MAX
+#ifdef UINT64_MAX
+#ifdef ULONG_MAX
+#define Size_t_is_ul64 ((SIZE_MAX == UINT64_MAX) && (SIZE_MAX <= ULONG_MAX))
+#endif
+#endif
+#endif
+#endif
+#ifndef Size_t_is_ul64
+#define Size_t_is_ul64 0
+#endif
+
+#ifndef Size_t_is_unknown
+#define Size_t_is_unknown ((!(Size_t_is_ul32)) && (!(Size_t_is_ul64)))
+#endif
+
+#ifndef Max_size_t_factorial
+#if Size_t_is_ul32
+#define Max_size_t_factorial 12
+#endif
+#endif
+
+#ifndef Max_size_t_factorial
+#if Size_t_is_ul64
+#define Max_size_t_factorial 20
+#endif
+#endif
+
+#ifndef Max_size_t_factorial
+#define Max_size_t_factorial 0
+#endif
+
+#if (!Max_size_t_factorial)
+
+#ifndef use__builtin_umull_overflow_for_size_t
+#ifdef __GNUC__
+#ifdef SIZE_MAX
+#ifdef ULONG_MAX
+#define use__builtin_umull_overflow_for_size_t (SIZE_MAX == ULONG_MAX)
+#endif
+#endif
+#endif
+#endif
+#ifndef use__builtin_umull_overflow_for_size_t
+#define use__builtin_umull_overflow_for_size_t 0
+#endif
+
+#if use__builtin_umull_overflow_for_size_t
+#define safe_mul_size_t(a, b, res) __builtin_umull_overflow(a, b, res)
+#else
+#define safe_mul_size_t(a, b, res) _diy_safe_mul_size_t(a, b, res)
+static unsigned _diy_safe_mul_size_t(size_t lhs, size_t rhs, size_t *result)
 {
 	const size_t ulong_bits = (sizeof(size_t) * CHAR_BIT);
 	const size_t halfsize_max = (1ul << (ulong_bits / 2)) - 1ul;
@@ -115,62 +250,47 @@ unsigned safe_mul_size_t(size_t lhs, size_t rhs, size_t *result)
 	*result = product;
 	return overflowed;
 }
+#endif /* has__builtin_umull_overflow */
 
-size_t factorial(size_t n)
+static size_t _factorial_size_t_loop(size_t n)
 {
 	size_t result, last_result;
 	unsigned overflow;
 
-	overflow = 0;
-	switch (n) {
-	case 0:
-		result = 1UL;
-		break;
-	case 1:
-		result = 1UL;
-		break;
-	case 2:
-		result = 2UL;
-		break;
-	case 3:
-		result = 6UL;
-		break;
-	case 4:
-		result = 24UL;
-		break;
-	case 5:
-		result = 120UL;
-		break;
-	case 6:
-		result = 720UL;
-		break;
-	case 7:
-		result = 5040UL;
-		break;
-	case 8:
-		result = 40320UL;
-		break;
-	case 9:
-		result = 362880UL;
-		break;
-	case 10:
-		result = 3628800UL;
-		break;
-	case 11:
-		result = 39916800UL;
-		break;
-	case 12:
-		result = 479001600UL;
-		break;
-	default:
-		result = n;
-		do {
-			last_result = result;
-			overflow = safe_mul_size_t(last_result, --n, &result);
-		} while ((!overflow) && (n > 1));
-	}
+	result = n;
+	do {
+		last_result = result;
+		overflow = safe_mul_size_t(last_result, --n, &result);
+	} while ((!overflow) && (n > 1));
+
 	return overflow ? 0 : result;
 }
+
+#endif /* (!Max_size_t_factorial) */
+
+size_t factorial_size_t(size_t n)
+{
+	size_t result;
+
+#if Max_size_t_factorial
+	result = (n > (Max_size_t_factorial)) ? 0 : ulfactorials[n];
+#else
+	result = (n > max_ulfactorial)
+	    ? _factorial_size_t_loop(n)
+	    : ulfactorials[n];
+#endif
+
+	return result;
+}
+
+#undef Max_size_t_factorial
+#undef safe_mul_size_t
+#undef Size_t_is_ul32
+#undef Size_t_is_ul64
+#undef Size_t_is_unknown
+#undef use__builtin_umull_overflow_for_size_t
+#undef TWELVE_FACT
+#undef ULS
 
 static void print_ints(int *a, size_t len)
 {
@@ -219,11 +339,11 @@ int main(int argc, char *argv[])
 	printf("---------\n");
 
 	if (permutation_number < 0) {
-		if (!factorial(len)) {
+		if (!factorial_size_t(len)) {
 			fprintf(stderr, "factorial(%lu) overflows\n",
 				(unsigned long)len);
 		}
-		for (i = 0; i < factorial(len); ++i) {
+		for (i = 0; i < factorial_size_t(len); ++i) {
 			permute(i, ints, permuted_ints, len, elem_size, &x);
 			print_ints(permuted_ints, len);
 		}
