@@ -87,6 +87,75 @@ void *permute(size_t perm_idx, const void *src, void *dest, size_t len,
 	return dest;
 }
 
+static void print_ints(int *a, size_t len)
+{
+	size_t i;
+
+	printf("[");
+	for (i = 0; i < len; ++i) {
+		printf("%d,", a[i]);
+	}
+	printf("\b]\n");
+}
+
+int main(int argc, char *argv[])
+{
+	int *ints, *permuted_ints, x;
+	size_t i, len, elem_size;
+	int permutation_number;
+
+	len = (argc > 1) ? (size_t)atoi(argv[1]) : 4;
+	permutation_number = (argc > 2) ? atoi(argv[2]) : -1;
+
+	if (len == 0) {
+		printf("[]\n");
+		return 0;
+	}
+	elem_size = sizeof(int);
+	ints = malloc(elem_size * len);
+	if (!ints) {
+		fprintf(stderr, "malloc(%lu) == NULL\n",
+			(unsigned long)elem_size * len);
+		return 1;
+	}
+	permuted_ints = malloc(elem_size * len);
+	if (!permuted_ints) {
+		fprintf(stderr, "2nd malloc(%lu) == NULL\n",
+			(unsigned long)elem_size * len);
+		return 1;
+	}
+
+	for (i = 0; i < len; ++i) {
+		ints[i] = (int)i;
+	}
+
+	printf("---------\n");
+	print_ints(ints, len);
+	printf("---------\n");
+
+	if (permutation_number < 0) {
+		if (!factorial_size_t(len)) {
+			fprintf(stderr, "factorial(%lu) overflows\n",
+				(unsigned long)len);
+		}
+		for (i = 0; i < factorial_size_t(len); ++i) {
+			permute(i, ints, permuted_ints, len, elem_size, &x);
+			print_ints(permuted_ints, len);
+		}
+	} else {
+		permute((size_t)permutation_number, ints, permuted_ints, len,
+			elem_size, &x);
+		print_ints(permuted_ints, len);
+	}
+
+	if (MAKE_VALGRIND_HAPPY) {
+		free(ints);
+		free(permuted_ints);
+	}
+
+	return 0;
+}
+
 /* in-lined from factorial_size_t.c */
 /* ULS(x)? Unsigned Long Safe ?
  * if the architecture is bigger that 64 bit, fall back */
@@ -309,72 +378,3 @@ size_t factorial_size_t(size_t n)
 #undef Size_t_is_unknown
 #undef use__builtin_umull_overflow_for_size_t
 #undef ULS
-
-static void print_ints(int *a, size_t len)
-{
-	size_t i;
-
-	printf("[");
-	for (i = 0; i < len; ++i) {
-		printf("%d,", a[i]);
-	}
-	printf("\b]\n");
-}
-
-int main(int argc, char *argv[])
-{
-	int *ints, *permuted_ints, x;
-	size_t i, len, elem_size;
-	int permutation_number;
-
-	len = (argc > 1) ? (size_t)atoi(argv[1]) : 4;
-	permutation_number = (argc > 2) ? atoi(argv[2]) : -1;
-
-	if (len == 0) {
-		printf("[]\n");
-		return 0;
-	}
-	elem_size = sizeof(int);
-	ints = malloc(elem_size * len);
-	if (!ints) {
-		fprintf(stderr, "malloc(%lu) == NULL\n",
-			(unsigned long)elem_size * len);
-		return 1;
-	}
-	permuted_ints = malloc(elem_size * len);
-	if (!permuted_ints) {
-		fprintf(stderr, "2nd malloc(%lu) == NULL\n",
-			(unsigned long)elem_size * len);
-		return 1;
-	}
-
-	for (i = 0; i < len; ++i) {
-		ints[i] = (int)i;
-	}
-
-	printf("---------\n");
-	print_ints(ints, len);
-	printf("---------\n");
-
-	if (permutation_number < 0) {
-		if (!factorial_size_t(len)) {
-			fprintf(stderr, "factorial(%lu) overflows\n",
-				(unsigned long)len);
-		}
-		for (i = 0; i < factorial_size_t(len); ++i) {
-			permute(i, ints, permuted_ints, len, elem_size, &x);
-			print_ints(permuted_ints, len);
-		}
-	} else {
-		permute((size_t)permutation_number, ints, permuted_ints, len,
-			elem_size, &x);
-		print_ints(permuted_ints, len);
-	}
-
-	if (MAKE_VALGRIND_HAPPY) {
-		free(ints);
-		free(permuted_ints);
-	}
-
-	return 0;
-}
