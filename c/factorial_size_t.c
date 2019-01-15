@@ -30,67 +30,86 @@ size_t factorial_size_t(size_t n);
  * if the architecture is bigger that 64 bit, fall back */
 #define ULS(v) ((v <= ULONG_MAX) && (ULONG_MAX <= UINT64_MAX))
 
-#define TWELVE_FACT \
- (2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL)
-
 #if ((ULONG_MAX) && (ULONG_MAX <= UINT64_MAX))
 const unsigned long ulfactorials[] = {
-	(1UL),
-	(1UL),
-	(2UL),
-	(2UL * 3UL),
-	(2UL * 3UL * 4UL),
-	(2UL * 3UL * 4UL * 5UL),
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL),
+#define UL_Factorial_0 (1UL)
+	UL_Factorial_0,
+#define UL_Factorial_1 (1UL * UL_Factorial_0)
+	UL_Factorial_1,
+#define UL_Factorial_2 (2UL * UL_Factorial_1)
+	UL_Factorial_2,
+#define UL_Factorial_3 (3UL * UL_Factorial_2)
+	UL_Factorial_3,
+#define UL_Factorial_4 (4UL * UL_Factorial_3)
+	UL_Factorial_4,
+#define UL_Factorial_5 (5UL * UL_Factorial_4)
+	UL_Factorial_5,
+#define UL_Factorial_6 (6UL * UL_Factorial_5)
+#if ULS(UL_Factorial_6)
+	UL_Factorial_6,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL),
+#define UL_Factorial_7 (7UL * UL_Factorial_6)
+#if ULS(UL_Factorial_7)
+	UL_Factorial_7,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL),
+#define UL_Factorial_8 (8UL * UL_Factorial_7)
+#if ULS(UL_Factorial_8)
+	UL_Factorial_8,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL),
+#define UL_Factorial_9 (9UL * UL_Factorial_8)
+#if ULS(UL_Factorial_9)
+	UL_Factorial_9,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL),
+#define UL_Factorial_10 (10UL * UL_Factorial_9)
+#if ULS(UL_Factorial_10)
+	UL_Factorial_10,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL),
+#define UL_Factorial_11 (11UL * UL_Factorial_10)
+#if ULS(UL_Factorial_11)
+	UL_Factorial_11,
 #endif
-#if ULS((2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL))
-	(2UL * 3UL * 4UL * 5UL * 6UL * 7UL * 8UL * 9UL * 10UL * 11UL * 12UL),
+#define UL_Factorial_12 (12UL * UL_Factorial_11)
+#if ULS(UL_Factorial_12)
+	UL_Factorial_12,
 #endif
-#if ULS((TWELVE_FACT * 13UL))
-	(TWELVE_FACT * 13UL),
+#define UL_Factorial_13 (13UL * UL_Factorial_12)
+#if ULS(UL_Factorial_13)
+	UL_Factorial_13,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL))
-	(TWELVE_FACT * 13UL * 14UL),
+#define UL_Factorial_14 (14UL * UL_Factorial_13)
+#if ULS(UL_Factorial_14)
+	UL_Factorial_14,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL),
+#define UL_Factorial_15 (15UL * UL_Factorial_14)
+#if ULS(UL_Factorial_15)
+	UL_Factorial_15,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL),
+#define UL_Factorial_16 (16UL * UL_Factorial_15)
+#if ULS(UL_Factorial_16)
+	UL_Factorial_16,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL),
+#define UL_Factorial_17 (17UL * UL_Factorial_16)
+#if ULS(UL_Factorial_17)
+	UL_Factorial_17,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL),
+#define UL_Factorial_18 (18UL * UL_Factorial_17)
+#if ULS(UL_Factorial_18)
+	UL_Factorial_18,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL),
+#define UL_Factorial_19 (19UL * UL_Factorial_18)
+#if ULS(UL_Factorial_19)
+	UL_Factorial_19,
 #endif
-#if ULS((TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL * 20UL))
-	(TWELVE_FACT * 13UL * 14UL * 15UL * 16UL * 17UL * 18UL * 19UL * 20UL),
+#define UL_Factorial_20 (20UL * UL_Factorial_19)
+#if ULS(UL_Factorial_20)
+	UL_Factorial_20,
 #endif
-	(0)
+	(0)			/* zero-terminated array for easier debugging */
 };
 
+/* minus one for zero offset, minus another for zero termination */
 const size_t max_ulfactorial =
-    (((sizeof(ulfactorials) / sizeof(unsigned long))) - 2);
+    (sizeof(ulfactorials) / sizeof(unsigned long)) - 2;
 #endif
 
 #ifndef Size_t_is_ul32
@@ -272,5 +291,4 @@ int main(int argc, char **argv)
 #undef Size_t_is_ul64
 #undef Size_t_is_unknown
 #undef use__builtin_umull_overflow_for_size_t
-#undef TWELVE_FACT
 #undef ULS
