@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "before:  $(date)"
+echo "hwclock: $(sudo hwclock --show)"
+datetime_utc=$(curl -sD - ntp.org | grep '^Date:' | cut -d' ' -f3-6)
+if [ -n "$datetime_utc" ]; then
+	new_datetime_utc="${datetime_utc}Z"
+	sudo date -s "$new_datetime_utc"
+	echo $new_datetime_utc
+	sudo hwclock --systohc --localtime
+else
+	echo "bad datetime_utc: '$datetime_utc'"
+fi
+echo "after:   $(date)"
+echo "hwclock: $(sudo hwclock --show)"
