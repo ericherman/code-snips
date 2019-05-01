@@ -386,6 +386,38 @@ unsigned int murmur_hash_str(const char *str, size_t len)
 	return hash;
 }
 
+/* https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function */
+unsigned int fnv1_hash_str(const char *str, size_t str_len)
+{
+	const uint64_t fnv_offset_basis = 0xcbf29ce484222325;
+	const uint64_t fnv_prime = 0x100000001b3;
+	size_t i;
+
+	uint64_t hash = fnv_offset_basis;
+	for (i = 0; i < str_len; ++i) {
+		hash = hash * fnv_prime;
+		hash = hash ^ ((uint8_t)str[i]);
+	}
+
+	return (unsigned int)hash;
+}
+
+/* https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function */
+unsigned int fnv1a_hash_str(const char *str, size_t str_len)
+{
+	const uint64_t fnv_offset_basis = 0xcbf29ce484222325;
+	const uint64_t fnv_prime = 0x100000001b3;
+	size_t i;
+
+	uint64_t hash = fnv_offset_basis;
+	for (i = 0; i < str_len; ++i) {
+		hash = hash ^ ((uint8_t)str[i]);
+		hash = hash * fnv_prime;
+	}
+
+	return (unsigned int)hash;
+}
+
 #define Rol_size_val_pos(size_bytes, val, positions) \
 	( ((val) << ((positions) % ((size_bytes) * CHAR_BIT))) \
 	| ((val) >> (((size_bytes) * CHAR_BIT) \
@@ -548,11 +580,11 @@ int main(int argc, char **argv)
 	char buf[MAX_WORD_LEN];
 	unsigned int hashcode;
 	unsigned int *kr2, *kr1, *djb2, *djb2xor, *sdbm, *paul, *level, *sip,
-	    *murmur, *xorrot;
+	    *murmur, *fnv1, *fnv1a, *xorrot;
 	double t0, t_kr2, t_kr1, t_djb2, t_djb2xor, t_sdbm, t_paul, t_level,
-	    t_sip, t_murmur, t_xorrot;
+	    t_sip, t_murmur, t_fnv1, t_fnv1a, t_xorrot;
 	struct simple_stats_s ss_kr2, ss_kr1, ss_djb2, ss_djb2xor, ss_sdbm,
-	    ss_paul, ss_level, ss_sip, ss_murmur, ss_xorrot;
+	    ss_paul, ss_level, ss_sip, ss_murmur, ss_fnv1, ss_fnv1a, ss_xorrot;
 
 	num_buckets = (argc > 1) ? strtoul(argv[1], NULL, 10) : 0;
 	force_consistent_hashing = (argc > 2) ? atoi(argv[2]) : 1;
@@ -564,7 +596,7 @@ int main(int argc, char **argv)
 	}
 
 	t_kr2 = t_kr1 = t_djb2 = t_djb2xor = t_sdbm = t_paul = t_level = 0;
-	t_sip = t_murmur = t_xorrot = 0;
+	t_sip = t_murmur = t_fnv1 = t_fnv1a = t_xorrot = 0;
 
 	simple_stats_init(&ss_kr2);
 	simple_stats_init(&ss_kr1);
@@ -575,6 +607,8 @@ int main(int argc, char **argv)
 	simple_stats_init(&ss_level);
 	simple_stats_init(&ss_sip);
 	simple_stats_init(&ss_murmur);
+	simple_stats_init(&ss_fnv1);
+	simple_stats_init(&ss_fnv1a);
 	simple_stats_init(&ss_xorrot);
 
 	kr2 = calloc(sizeof(unsigned int), num_buckets);
@@ -586,10 +620,12 @@ int main(int argc, char **argv)
 	level = calloc(sizeof(unsigned int), num_buckets);
 	sip = calloc(sizeof(unsigned int), num_buckets);
 	murmur = calloc(sizeof(unsigned int), num_buckets);
+	fnv1 = calloc(sizeof(unsigned int), num_buckets);
+	fnv1a = calloc(sizeof(unsigned int), num_buckets);
 	xorrot = calloc(sizeof(unsigned int), num_buckets);
 
 	if (!kr2 || !kr1 || !djb2 || !djb2xor || !sdbm || !paul || !level
-	    || !sip || !murmur || !xorrot) {
+	    || !sip || !murmur || !fnv1 || !fnv1a || !xorrot) {
 		fprintf(stderr, "failed to calloc(%lu, %lu)?\n",
 			(unsigned long)(sizeof(unsigned int)),
 			(unsigned long)num_buckets);
@@ -613,13 +649,15 @@ int main(int argc, char **argv)
 		Hash_it(leveldb_hash_str, t_level, level);
 		Hash_it(sip_hash_str, t_sip, sip);
 		Hash_it(murmur_hash_str, t_murmur, murmur);
+		Hash_it(fnv1_hash_str, t_fnv1, fnv1);
+		Hash_it(fnv1a_hash_str, t_fnv1a, fnv1a);
 		Hash_it(xorrot_hash_str, t_xorrot, xorrot);
 	}
 
 	if (verbose) {
-		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 		       "kr2", "kr1", "djb2", "djb2xor", "sdbm", "paul",
-		       "leveldb", "sip", "murmur", "xorrot");
+		       "leveldb", "sip", "murmur", "fnv1", "fnv1a", "xorrot");
 	}
 	for (i = 0; i < num_buckets; ++i) {
 		simple_stats_append_val(&ss_kr2, kr2[i]);
@@ -631,11 +669,15 @@ int main(int argc, char **argv)
 		simple_stats_append_val(&ss_level, level[i]);
 		simple_stats_append_val(&ss_sip, sip[i]);
 		simple_stats_append_val(&ss_murmur, murmur[i]);
+		simple_stats_append_val(&ss_fnv1, fnv1[i]);
+		simple_stats_append_val(&ss_fnv1a, fnv1a[i]);
 		simple_stats_append_val(&ss_xorrot, xorrot[i]);
 		if (verbose) {
-			printf("%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\n",
-			       kr2[i], kr1[i], djb2[i], djb2xor[i], sdbm[i],
-			       paul[i], level[i], sip[i], murmur[i], xorrot[i]);
+			printf
+			    ("%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\n",
+			     kr2[i], kr1[i], djb2[i], djb2xor[i], sdbm[i],
+			     paul[i], level[i], sip[i], murmur[i], fnv1[i],
+			     fnv1a[i], xorrot[i]);
 		}
 	}
 	if (verbose) {
@@ -656,6 +698,8 @@ int main(int argc, char **argv)
 	_print_stats(&ss_level, "level", t_level, bessel_correct);
 	_print_stats(&ss_sip, "sip", t_sip, bessel_correct);
 	_print_stats(&ss_murmur, "murmur", t_murmur, bessel_correct);
+	_print_stats(&ss_fnv1, "fnv1", t_fnv1, bessel_correct);
+	_print_stats(&ss_fnv1a, "fnv1a", t_fnv1a, bessel_correct);
 	_print_stats(&ss_xorrot, "xorrot", t_xorrot, bessel_correct);
 
 	return 0;
