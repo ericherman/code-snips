@@ -1,0 +1,88 @@
+--- orig/DynamicResources/Config/Default.con	2018-12-30 12:10:56.953038201 +0100
++++ next/DynamicResources/Config/Default.con	2018-12-30 12:06:07.369754739 +0100
+@@ -27,6 +27,66 @@
+ 	Speed 1
+ }
+ 
++DefineShortcut FastForwardPause
++DefaultKey Ctrl+Pad 0
++{
++	Speed 0
++}
++
++DefineShortcut Play1
++DefaultKey Ctrl+Pad 1
++{
++	Speed 1
++}
++
++DefineShortcut FastForward2
++DefaultKey Ctrl+Pad 2
++{
++	Speed 2
++}
++
++DefineShortcut FastForward3
++DefaultKey Ctrl+Pad 3
++{
++	Speed 3
++}
++
++DefineShortcut FastForward4
++DefaultKey Ctrl+Pad 4
++{
++	Speed 4
++}
++
++DefineShortcut FastForward5
++DefaultKey Ctrl+Pad 5
++{
++	Speed 5
++}
++
++DefineShortcut FastForward10
++DefaultKey Ctrl+Pad 6
++{
++	Speed 10
++}
++
++DefineShortcut FastForward25
++DefaultKey Ctrl+Pad 7
++{
++	Speed 25
++}
++
++DefineShortcut FastForward50
++DefaultKey Ctrl+Pad 8
++{
++	Speed 50
++}
++
++DefineShortcut FastForward99
++DefaultKey Ctrl+Pad 9
++{
++	Speed 99
++}
++
+ DefineShortcut GodMode
+ DefaultKey Shift G
+ Category Debug
+--- orig/DynamicResources/Config/Default.ksb	2018-12-30 12:10:28.921108445 +0100
++++ next/DynamicResources/Config/Default.ksb	2018-12-30 12:06:39.317676837 +0100
+@@ -79,6 +79,16 @@
+ QuickLoad:F8
+ Play:Shift+Pad -
+ FastForward:Shift+Pad +
++Play1:Ctrl+Pad 1
++FastForward2:Ctrl+Pad 2
++FastForward3:Ctrl+Pad 3
++FastForward4:Ctrl+Pad 4
++FastForward5:Ctrl+Pad 5
++FastForward10:Ctrl+Pad 6
++FastForward25:Ctrl+Pad 7
++FastForward50:Ctrl+Pad 8
++FastForward99:Ctrl+Pad 9
++FastForwardPause:Ctrl+Pad 0
+ SaveScreenShot:F12
+ MouseLook:Right Ctrl
+ ZoomIn:Shift+Up Arrow
