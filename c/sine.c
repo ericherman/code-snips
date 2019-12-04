@@ -54,7 +54,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define SIN_3PI_4 M_SQRT1_2
 #define SIN_4PI_4 0.0
 #define SIN_5PI_4 -M_SQRT1_2
-#define SIN_3PI_2 -1.0
+#define SIN_6PI_4 -1.0
 #define SIN_7PI_4 -M_SQRT1_2
 
 #define COS_1PI_4 M_SQRT1_2
@@ -62,7 +62,7 @@ gcc -Wall -Wextra -Werror -o sine sine.c -lm; ./sine
 #define COS_3PI_4 -M_SQRT1_2
 #define COS_4PI_4 -1.0
 #define COS_5PI_4 -M_SQRT1_2
-#define COS_3PI_2 0.0
+#define COS_6PI_4 0.0
 #define COS_7PI_4 M_SQRT1_2
 
 #ifndef _Trig_tangent_use_Bernoulli

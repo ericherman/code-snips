@@ -6,6 +6,7 @@ AOUT=$(basename --suffix='.c' $1);
 NOISY_FLAGS='-Wall -Wextra -Wpedantic'
 
 gcc \
+ $CFLAGS \
  $NOISY_FLAGS \
  -ggdb -pipe \
  $CFLAGS \
