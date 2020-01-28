@@ -37,5 +37,5 @@ gcc \
  -include time.h \
  -include unistd.h \
  -o $AOUT \
- $1 -lm $LDFLAGS && \
+ $1 -lm -lpthread $LDFLAGS && \
  ls -l $AOUT
