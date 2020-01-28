@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ "_${VERBOSE}_" != "__" ]; then
+set -x
+fi
+
 AOUT=$(basename --suffix='.c' $1);
 
 #NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
