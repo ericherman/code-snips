@@ -57,6 +57,24 @@ void mandlebrot(struct iterxy_s *p)
 	}
 }
 
+void not_a_circle(struct iterxy_s *p)
+{
+	double escape_radius = 2;
+	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
+		p->escaped = p->iterations;
+	} else {
+		if ( p->iterations == 0) {
+			p->zy = p->cy;
+			p->zx = p->cx;
+		} else {
+			double previous_zy = p->zy;
+			p->zy = (p->zy * p->zy) + (0.5 * p->zx);
+			p->zx = (p->zx * p->zx) + (0.5 * previous_zy);
+		}
+		++(p->iterations);
+	}
+}
+
 struct coordinate_plane_s {
 	unsigned screen_width;
 	unsigned screen_height;
@@ -159,6 +177,7 @@ void iterate_plane(struct coordinate_plane_s *plane, pfunc_f pfunc)
 
 void print_coordinate_plane_ascii(struct coordinate_plane_s *plane)
 {
+	printf("\n");
 	/* clear */
 	printf("\033[H\033[J");
 
@@ -186,7 +205,7 @@ void print_coordinate_plane_ascii(struct coordinate_plane_s *plane)
 
 int main(int argc, const char **argv)
 {
-	pfunc_f pfunc[2] = { mandlebrot, ordinary_square };
+	pfunc_f pfunc[3] = { mandlebrot, ordinary_square, not_a_circle };
 
 	// int screen_x = argc > 1 ? atoi(argv[1]) : 800;
 	// int screen_y = argc > 2 ? atoi(argv[2]) : (screen_x * 3) / 4;
@@ -203,7 +222,7 @@ int main(int argc, const char **argv)
 	struct coordinate_plane_s *plane =
 	    new_coordinate_plane(screen_x, screen_y);
 
-	if (func_idx < 0 || func_idx > 1) {
+	if (func_idx < 0 || func_idx > 2) {
 		func_idx = 0;
 	}
 
