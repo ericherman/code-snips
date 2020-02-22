@@ -44,15 +44,74 @@ void ordinary_square(struct iterxy_s *p)
 	}
 }
 
+/* Z[n+1] = (Z[n])^2 + Orig */
 void mandlebrot(struct iterxy_s *p)
 {
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
 	} else {
-		double previous_zy = p->zy;
-		p->zy = 2 * p->zx * p->zy + p->cy;
-		p->zx = (p->zx * p->zx) - (previous_zy * previous_zy) + p->cx;
+		/* first, square the complex */
+		/* the y is understood to contain an i, the sqrt(-1) */
+		/* generate and combine together the four combos */
+		double xx = p->zx * p->zx;	/* no i */
+		double yx = p->zy * p->zx;	/* has i */
+		double xy = p->zx * p->zy;	/* has i */
+		double yy = p->zy * p->zy * -1;	/* loses the i */
+
+		double result_x = xx + yy;	/* terms do not contain i */
+		double result_y = yx + xy;	/* terms contain an i */
+
+		/* then add the original C to the Z[n]^2 result */
+		p->zx = result_x + p->cx;
+		p->zy = result_y + p->cy;
+
+		++(p->iterations);
+	}
+}
+
+/* Z[n+1] = collapse_to_y2_to_y((Z[n])^2) + Orig */
+void square_binomial_collapse_y2_and_add_orig(struct iterxy_s *p)
+{
+	double escape_radius = 2;
+	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
+		p->escaped = p->iterations;
+	} else {
+		/* z[n+1] = z[n]^2 + B */
+
+		/* squaring a binomial == adding together four combos */
+		double xx = p->zx * p->zx;
+		double yx = p->zy * p->zx;
+		double xy = p->zx * p->zy;
+		double yy = p->zy * p->zy;
+		double binomial_x = xx;	/* no y terms */
+		double collapse_y_and_y2_terms = yx + xy + yy;
+
+		/* now add the original C */
+		p->zx = binomial_x + p->cx;
+		p->zy = collapse_y_and_y2_terms + p->cy;
+		++(p->iterations);
+	}
+}
+
+/* Z[n+1] = ignore_y2((Z[n])^2) + Orig */
+void square_binomial_ignore_y2_and_add_orig(struct iterxy_s *p)
+{
+	double escape_radius = 2;
+	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
+		p->escaped = p->iterations;
+	} else {
+		/* z[n+1] = z[n]^2 + B */
+
+		/* squaring a binomial == adding together four combos */
+		double xx = p->zx * p->zx;
+		double yx = p->zy * p->zx;
+		double xy = p->zx * p->zy;
+		double yy = p->zy * p->zy;
+
+		/* now add the original C */
+		p->zx = xx + p->cx;
+		p->zy = xy + yx + p->cy;
 		++(p->iterations);
 	}
 }
@@ -63,7 +122,7 @@ void not_a_circle(struct iterxy_s *p)
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
 	} else {
-		if ( p->iterations == 0) {
+		if (p->iterations == 0) {
 			p->zy = p->cy;
 			p->zx = p->cx;
 		} else {
@@ -97,7 +156,8 @@ static inline double _dmax(double a, double b)
 }
 
 struct coordinate_plane_s *new_coordinate_plane(unsigned screen_width,
-						unsigned screen_height)
+						unsigned screen_height,
+						double cx_min, double cx_max)
 {
 	size_t size = sizeof(struct coordinate_plane_s);
 	struct coordinate_plane_s *plane = malloc(size);
@@ -106,13 +166,13 @@ struct coordinate_plane_s *new_coordinate_plane(unsigned screen_width,
 		exit(EXIT_FAILURE);
 	}
 
-	plane->cx_min = -2.5;
-	plane->cx_max = 1.5;
+	plane->cx_min = cx_min;
+	plane->cx_max = cx_max;
 	plane->screen_width = screen_width;
 	plane->screen_height = screen_height;
 	plane->coord_width = (plane->cx_max - plane->cx_min);
 	plane->cy_min =
-	    _dmax(1.5,
+	    _dmax(cx_max,
 		  ((plane->coord_width) *
 		   ((1.0 * screen_height) / screen_width)) / 2);
 	plane->cy_max = -(plane->cy_min);
@@ -203,9 +263,22 @@ void print_coordinate_plane_ascii(struct coordinate_plane_s *plane)
 	}
 }
 
+struct named_pfunc_s {
+	pfunc_f pfunc;
+	const char *name;
+};
+
 int main(int argc, const char **argv)
 {
-	pfunc_f pfunc[3] = { mandlebrot, ordinary_square, not_a_circle };
+	struct named_pfunc_s nf[] = {
+		{ mandlebrot, "mandlebrot" },
+		{ ordinary_square, "ordinary_square" },
+		{ not_a_circle, "not_a_circle" },
+		{ square_binomial_collapse_y2_and_add_orig,
+		 "square_binomial_collapse_y2_and_add_orig," },
+		{ square_binomial_ignore_y2_and_add_orig,
+		 "square_binomial_ignore_y2_and_add_orig," }
+	};
 
 	// int screen_x = argc > 1 ? atoi(argv[1]) : 800;
 	// int screen_y = argc > 2 ? atoi(argv[2]) : (screen_x * 3) / 4;
@@ -219,17 +292,21 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
+	/* define the range of the X dimension */
+	double cx_min = -2.5;
+	double cx_max = 1.5;
 	struct coordinate_plane_s *plane =
-	    new_coordinate_plane(screen_x, screen_y);
+	    new_coordinate_plane(screen_x, screen_y, cx_min, cx_max);
 
-	if (func_idx < 0 || func_idx > 2) {
+	if (func_idx < 0 || func_idx > 4) {
 		func_idx = 0;
 	}
 
 	for (unsigned long c = 0, i = 0; c != 'q'; ++i) {
-		iterate_plane(plane, pfunc[func_idx]);
+		iterate_plane(plane, nf[func_idx].pfunc);
 		print_coordinate_plane_ascii(plane);
-		printf("%lu. <enter> to continue or 'q<enter>' to quit: ", i);
+		printf("%s %lu. <enter> to continue or 'q<enter>' to quit: ",
+		       nf[func_idx].name, i);
 		c = getchar();
 	}
 
