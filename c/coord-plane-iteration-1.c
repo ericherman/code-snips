@@ -34,6 +34,9 @@ typedef void (*pfunc_f)(struct iterxy_s * p);
 
 void ordinary_square(struct iterxy_s *p)
 {
+	if (p->escaped) {
+		return;
+	}
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
@@ -47,6 +50,9 @@ void ordinary_square(struct iterxy_s *p)
 /* Z[n+1] = (Z[n])^2 + Orig */
 void mandlebrot(struct iterxy_s *p)
 {
+	if (p->escaped) {
+		return;
+	}
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
@@ -73,6 +79,9 @@ void mandlebrot(struct iterxy_s *p)
 /* Z[n+1] = collapse_to_y2_to_y((Z[n])^2) + Orig */
 void square_binomial_collapse_y2_and_add_orig(struct iterxy_s *p)
 {
+	if (p->escaped) {
+		return;
+	}
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
@@ -97,6 +106,9 @@ void square_binomial_collapse_y2_and_add_orig(struct iterxy_s *p)
 /* Z[n+1] = ignore_y2((Z[n])^2) + Orig */
 void square_binomial_ignore_y2_and_add_orig(struct iterxy_s *p)
 {
+	if (p->escaped) {
+		return;
+	}
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
@@ -118,6 +130,9 @@ void square_binomial_ignore_y2_and_add_orig(struct iterxy_s *p)
 
 void not_a_circle(struct iterxy_s *p)
 {
+	if (p->escaped) {
+		return;
+	}
 	double escape_radius = 2;
 	if ((fabs(p->zy) + fabs(p->zx)) > escape_radius) {
 		p->escaped = p->iterations;
@@ -126,9 +141,10 @@ void not_a_circle(struct iterxy_s *p)
 			p->zy = p->cy;
 			p->zx = p->cx;
 		} else {
-			double previous_zy = p->zy;
-			p->zy = (p->zy * p->zy) + (0.5 * p->zx);
-			p->zx = (p->zx * p->zx) + (0.5 * previous_zy);
+			double xx = p->zx * p->zx;
+			double yy = p->zy * p->zy;
+			p->zy = yy + (0.5 * p->zx);
+			p->zx = xx + (0.5 * p->zy);
 		}
 		++(p->iterations);
 	}
