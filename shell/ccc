@@ -4,16 +4,20 @@ if [ "_${VERBOSE}_" != "__" ]; then
 set -x
 fi
 
+if [ -f /usr/include/SDL2/SDL.h ]; then
+SDL2_CFLAGS=`sdl2-config --cflags`
+SDL2_LIBS=`sdl2-config --libs`
+fi
+
 AOUT=$(basename --suffix='.c' $1);
 
 #NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
 NOISY_FLAGS='-Wall -Wextra -Wpedantic'
 
 gcc \
- $CFLAGS \
  $NOISY_FLAGS \
  -ggdb -pipe \
- $CFLAGS \
+ $SDL2_CFLAGS \
  -include alloca.h \
  -include assert.h \
  -include complex.h \
@@ -40,6 +44,7 @@ gcc \
  -include termios.h \
  -include time.h \
  -include unistd.h \
+ $CFLAGS \
  -o $AOUT \
- $1 -lm -lpthread $LDFLAGS && \
+ $1 -lm -lpthread $SDL2_LIBS $LDFLAGS && \
  ls -l $AOUT
