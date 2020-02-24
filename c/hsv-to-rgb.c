@@ -60,31 +60,32 @@ int rgb_from_hsv(struct rgb_s *rgb, struct hsv_s hsv)
 		return 1;
 	}
 
+	double hue = hsv.hue == 360.0 ? 0.0 : hsv.hue;
 	double chroma = hsv.val * hsv.sat;
-	double offset = chroma * (1.0 - fabs(fmod(hsv.hue / 60.0, 2) - 1.0));
+	double offset = chroma * (1.0 - fabs(fmod(hue / 60.0, 2) - 1.0));
 	double smallm = hsv.val - chroma;
 
-	if (hsv.hue >= 0.0 && hsv.hue < 60.0) {
+	if (hue >= 0.0 && hue < 60.0) {
 		rgb->red = chroma + smallm;
 		rgb->green = offset + smallm;
 		rgb->blue = smallm;
-	} else if (hsv.hue >= 60.0 && hsv.hue < 120.0) {
+	} else if (hue >= 60.0 && hue < 120.0) {
 		rgb->red = offset + smallm;
 		rgb->green = chroma + smallm;
 		rgb->blue = smallm;
-	} else if (hsv.hue >= 120.0 && hsv.hue < 180.0) {
+	} else if (hue >= 120.0 && hue < 180.0) {
 		rgb->red = smallm;
 		rgb->green = chroma + smallm;
 		rgb->blue = offset + smallm;
-	} else if (hsv.hue >= 180.0 && hsv.hue < 240.0) {
+	} else if (hue >= 180.0 && hue < 240.0) {
 		rgb->red = smallm;
 		rgb->green = offset + smallm;
 		rgb->blue = chroma + smallm;
-	} else if (hsv.hue >= 240.0 && hsv.hue < 300.0) {
+	} else if (hue >= 240.0 && hue < 300.0) {
 		rgb->red = offset + smallm;
 		rgb->green = smallm;
 		rgb->blue = chroma + smallm;
-	} else if (hsv.hue >= 300.0 && hsv.hue < 360.0) {
+	} else if (hue >= 300.0 && hue < 360.0) {
 		rgb->red = chroma + smallm;
 		rgb->green = smallm;
 		rgb->blue = offset + smallm;
