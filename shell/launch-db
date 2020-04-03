@@ -1,0 +1,161 @@
+#!/bin/bash
+
+while getopts ":b:d:p:l:z:" opt; do
+	case $opt in
+	b)
+		BASEDIR="$OPTARG"
+		;;
+	p)
+		PORT="$OPTARG"
+		;;
+	d)
+		DATADIR="$OPTARG"
+		;;
+	l)
+		LOGDIR="$OPTARG"
+		;;
+	z)
+		LAUNCH_PREFIX="$OPTARG"
+		;;
+	\?)
+		echo "Unknown Option: -$OPTARG" >&2
+		exit 1
+		;;
+	:)
+		echo "Option -$OPTARG requires an argument" >&2
+		exit 1
+		;;
+	esac
+done
+
+if [ "_${BASEDIR}_" == "__" ]; then
+	BASEDIR=$1
+fi
+if [ "_${BASEDIR}_" == "__" ]; then
+	if [ -e ${HOME}/builds/mariadb-server ]; then
+		BASEDIR=${HOME}/builds/mariadb-server
+	elif [ -e ${HOME}/builds/mysql-server ]; then
+		BASEDIR=${HOME}/builds/mysql-server
+	else
+		echo "Option '-b basedir' not set, exiting'"
+		exit 1
+	fi
+	echo "Option '-b basedir' not set, defaulting to '${BASEDIR}'"
+fi
+BASEDIR=`readlink -vf "${BASEDIR}"`
+
+if [ "_${PORT}_" == "__" ]; then
+	PORT=$2
+fi
+if [ "_${PORT}_" == "__" ]; then
+	PORT=13306
+	echo "Option '-p port' not set, defaulting to $PORT"
+fi
+
+
+if [ "_${DATADIR}_" == "__" ]; then
+	DATADIR=${BASEDIR}/data
+fi
+if [ -e "${DATADIR}" ]; then
+	DATADIR=`readlink -vf "${DATADIR}"`
+else
+	echo "DATADIR '${DATADIR}' does not exist, set wtih '-d'"
+	if [ -e "${BASEDIR}/scripts/mariadb-install-db" ]; then
+		echo "forgot ${BASEDIR}/scripts/mariadb-install-db ?"
+	elif [ -e "${BASEDIR}/scripts/mysql_install_db" ]; then
+		echo "forgot ${BASEDIR}/scripts/mariadb-install-db ?"
+	fi
+	exit 1
+fi
+
+if [ -e ${BASEDIR}/libexec/mariadbd ]; then
+	DB_EXE_PATH=${BASEDIR}/libexec/mariadbd
+elif [ -e ${BASEDIR}/bin/mariadbd ]; then
+	DB_EXE_PATH=${BASEDIR}/bin/mariadbd
+elif [ -e ${BASEDIR}/libexec/mysqld ]; then
+	DB_EXE_PATH=${BASEDIR}/libexec/mysqld
+elif [ -e ${BASEDIR}/bin/mysqld ]; then
+	DB_EXE_PATH=${BASEDIR}/bin/mysqld
+else
+	echo "can not find db server executable in ${BASEDIR}"
+	exit 1;
+fi
+DB_EXE_PATH=`readlink -vf "$DB_EXE_PATH"`
+DB_EXE_BASENAME=`basename "$DB_EXE_PATH"`
+
+if [ "_${LOGDIR}_" == "__" ]; then
+	LOGDIR=/tmp/${USER}-${DB_EXE_BASENAME}-${PORT}/log
+fi
+mkdir -pv "${LOGDIR}";
+LOGDIR=`readlink -vf "${LOGDIR}"`
+
+if [ -e "$BASEDIR/bin/mariadb" ]; then
+	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
+elif [ -e "$BASEDIR/bin/mysql" ]; then
+	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
+elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
+	DB_CLIENT_EXE="maridb"
+else
+	DB_CLIENT_EXE="mysql"
+fi
+CONNECT_STRING="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
+
+echo
+echo "BASEDIR=$BASEDIR"
+echo "DATADIR=$DATADIR"
+echo "LOGDIR=$LOGDIR"
+echo "PORT=$PORT"
+if [ -n "$LD_LIBRARY_PATH" ]; then
+echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+fi
+echo
+
+PIDFILE="${DATADIR}/${DB_EXE_BASENAME}.pid"
+if [ -e "$PIDFILE" ]; then
+	echo "PIDFILE '$PIDFILE' exists"
+	PID=`cat "$PIDFILE"`
+	kill -0 $PID \
+		&& echo "${DB_EXE_BASENAME} already running?" \
+		&& echo "maybe try something like:" \
+		&& echo "	$CONNECT_STRING" \
+		&& exit 1;
+fi
+
+$LAUNCH_PREFIX $DB_EXE_PATH \
+ --no-defaults \
+ --basedir="$BASEDIR" \
+ --datadir="$DATADIR" \
+ --general-log-file="${LOGDIR}/${DB_EXE_BASENAME}.log" \
+ --port=${PORT} \
+ --pid-file="${DATADIR}/${DB_EXE_BASENAME}.pid" \
+ --socket="${DATADIR}/${DB_EXE_BASENAME}.sock" \
+ --default_authentication_plugin=mysql_native_password \
+ --innodb_buffer_pool_size=512M \
+ --innodb_file_per_table \
+ --innodb_flush_log_at_trx_commit=2 \
+ --innodb_log_buffer_size=256M \
+ --innodb_log_file_size=32M \
+ --innodb_max_dirty_pages_pct=20 \
+ --innodb_sort_buffer_size=1M \
+ --key_buffer=64M \
+ --max_allowed_packet=64M \
+ --max_heap_table_size=512M \
+ --myisam_sort_buffer_size=64M \
+ --net_buffer_length=16K \
+ --read_buffer_size=1024K \
+ --read_rnd_buffer_size=1024K \
+ --sort_buffer_size=64M \
+ --table_cache=256 \
+ --thread_cache_size=16 \
+ --tmp_table_size=64M &
+
+
+sleep 3
+ps auxwww \
+	| grep -i "^USER\|$DB_EXE_BASENAME" \
+	| grep -v grep \
+	| grep -v launch-mysqld \
+	| sed -e's/\(.*\)/\1\n/'
+
+echo "example connect string:"
+echo "	$CONNECT_STRING"
