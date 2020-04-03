@@ -100,6 +100,13 @@ else
 fi
 CONNECT_STRING="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
 
+CLIENT_BASENAME=`basename "$DB_CLIENT_EXE"`
+if [ "CLIENT_BASENAME" == "maraidb" ]; then
+DEFAULT_TZ_OPTION='--default-time-zone=+00:00'
+else
+DEFAULT_TZ_OPTION='--default_time_zone=+00:00'
+fi
+
 echo
 echo "BASEDIR=$BASEDIR"
 echo "DATADIR=$DATADIR"
@@ -121,7 +128,8 @@ if [ -e "$PIDFILE" ]; then
 		&& exit 1;
 fi
 
-$LAUNCH_PREFIX $DB_EXE_PATH \
+
+TZ=UTC $LAUNCH_PREFIX $DB_EXE_PATH \
  --no-defaults \
  --basedir="$BASEDIR" \
  --datadir="$DATADIR" \
@@ -129,6 +137,7 @@ $LAUNCH_PREFIX $DB_EXE_PATH \
  --port=${PORT} \
  --pid-file="${DATADIR}/${DB_EXE_BASENAME}.pid" \
  --socket="${DATADIR}/${DB_EXE_BASENAME}.sock" \
+ $DEFAULT_TZ_OPTION \
  --default_authentication_plugin=mysql_native_password \
  --innodb_buffer_pool_size=512M \
  --innodb_file_per_table \
