@@ -89,6 +89,16 @@ fi
 mkdir -pv "${LOGDIR}";
 LOGDIR=`readlink -vf "${LOGDIR}"`
 
+if [ -e "$BASEDIR/bin/mariadb" ]; then
+	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
+elif [ -e "$BASEDIR/bin/mysql" ]; then
+	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
+elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
+	DB_CLIENT_EXE="maridb"
+else
+	DB_CLIENT_EXE="mysql"
+fi
+CONNECT_STRING="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
 
 echo
 echo "BASEDIR=$BASEDIR"
@@ -99,6 +109,17 @@ if [ -n "$LD_LIBRARY_PATH" ]; then
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 fi
 echo
+
+PIDFILE="${DATADIR}/${DB_EXE_BASENAME}.pid"
+if [ -e "$PIDFILE" ]; then
+	echo "PIDFILE '$PIDFILE' exists"
+	PID=`cat "$PIDFILE"`
+	kill -0 $PID \
+		&& echo "${DB_EXE_BASENAME} already running?" \
+		&& echo "maybe try something like:" \
+		&& echo "	$CONNECT_STRING" \
+		&& exit 1;
+fi
 
 $LAUNCH_PREFIX $DB_EXE_PATH \
  --no-defaults \
@@ -136,16 +157,5 @@ ps auxwww \
 	| grep -v launch-mysqld \
 	| sed -e's/\(.*\)/\1\n/'
 
-
-if [ -e "$BASEDIR/bin/mariadb" ]; then
-	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
-elif [ -e "$BASEDIR/bin/mysql" ]; then
-	DB_CLIENT_EXE="$BASEDIR/bin/mariadb"
-elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
-	DB_CLIENT_EXE="maridb"
-else
-	DB_CLIENT_EXE="mysql"
-fi
-
 echo "example connect string:"
-echo "	$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
+echo "	$CONNECT_STRING"
