@@ -3,16 +3,16 @@
 while getopts ":b:d:p:l:z:" opt; do
 	case $opt in
 	b)
-		MYSQLD_BASE_DIR="$OPTARG"
+		BASE_DIR="$OPTARG"
 		;;
 	p)
-		MYSQLD_PORT="$OPTARG"
+		PORT="$OPTARG"
 		;;
 	d)
-		MYSQLD_DATA_DIR="$OPTARG"
+		DATA_DIR="$OPTARG"
 		;;
 	l)
-		MYSQLD_LOG_DIR="$OPTARG"
+		LOG_DIR="$OPTARG"
 		;;
 	z)
 		LAUNCH_PREFIX="$OPTARG"
@@ -28,50 +28,84 @@ while getopts ":b:d:p:l:z:" opt; do
 	esac
 done
 
-if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
-	MYSQLD_BASE_DIR=$1
+if [ "_${BASE_DIR}_" == "__" ]; then
+	BASE_DIR=$1
 fi
-if [ "_${MYSQLD_BASE_DIR}_" == "__" ]; then
-	echo "Option '-b basedir' must be set (and '-p port')"
+if [ "_${BASE_DIR}_" == "__" ]; then
+	if [ -e ${HOME}/builds/mariadb-server ]; then
+		BASE_DIR=${HOME}/builds/mariadb-server
+	elif [ -e ${HOME}/builds/mysql-server ]; then
+		BASE_DIR=${HOME}/builds/mysql-server
+	else
+		echo "Option '-b basedir' not set, exiting'"
+		exit 1
+	fi
+	echo "Option '-b basedir' not set, defaulting to '${BASE_DIR}'"
+fi
+BASE_DIR=`readlink -vf "${BASE_DIR}"`
+
+if [ "_${PORT}_" == "__" ]; then
+	PORT=$2
+fi
+if [ "_${PORT}_" == "__" ]; then
+	PORT=13306
+	echo "Option '-p port' not set, defaulting to $PORT"
+fi
+
+
+if [ "_${DATA_DIR}_" == "__" ]; then
+	DATA_DIR=${BASE_DIR}/data
+fi
+if [ -e "${DATA_DIR}" ]; then
+	DATA_DIR=`readlink -vf "${DATA_DIR}"`
+else
+	echo "DATA_DIR '${DATA_DIR}' does not exist, set wtih '-d'"
+	if [ -e "${BASE_DIR}/scripts/mariadb-install-db" ]; then
+		echo "forgot ${BASE_DIR}/scripts/mariadb-install-db ?"
+	elif [ -e "${BASE_DIR}/scripts/mysql_install_db" ]; then
+		echo "forgot ${BASE_DIR}/scripts/mariadb-install-db ?"
+	fi
 	exit 1
 fi
 
-if [ "_${MYSQLD_PORT}_" == "__" ]; then
-	MYSQLD_PORT=$2
+if [ -e ${BASE_DIR}/libexec/mariadbd ]; then
+	DB_EXE_PATH=${BASE_DIR}/libexec/mariadbd
+elif [ -e ${BASE_DIR}/bin/mariadbd ]; then
+	DB_EXE_PATH=${BASE_DIR}/bin/mariadbd
+elif [ -e ${BASE_DIR}/libexec/mysqld ]; then
+	DB_EXE_PATH=${BASE_DIR}/libexec/mysqld
+elif [ -e ${BASE_DIR}/bin/mysqld ]; then
+	DB_EXE_PATH=${BASE_DIR}/bin/mysqld
+else
+	echo "can not find db server executable in ${BASE_DIR}"
+	exit 1;
 fi
-if [ "_${MYSQLD_PORT}_" == "__" ]; then
-	echo "Option '-p port' must be set (and '-b basedir')"
-	exit 1
+DB_EXE_PATH=`readlink -vf "$DB_EXE_PATH"`
+
+if [ "_${LOG_DIR}_" == "__" ]; then
+	LOG_DIR=/tmp/${USER}-${DB_EXE_BASENAME}-${PORT}/log
 fi
-
-
-if [ "_${MYSQLD_DATA_DIR}_" == "__" ]; then
-	MYSQLD_DATA_DIR=${MYSQLD_BASE_DIR}/data
-fi
-
-if [ "_${MYSQLD_LOG_DIR}_" == "__" ]; then
-	MYSQLD_LOG_DIR=/tmp/${USER}-mysql-${MYSQLD_PORT}/mysql_logs
-fi
-mkdir -pv ${MYSQLD_LOG_DIR};
-
-MYSQLD_BIN_DIR=${MYSQLD_BASE_DIR}/bin
+mkdir -pv "${LOG_DIR}";
+LOG_DIR=`readlink -vf "${LOG_DIR}"`
 
 echo
-echo MYSQLD_BIN_DIR=$MYSQLD_BIN_DIR
-echo MYSQLD_BASE_DIR=$MYSQLD_BASE_DIR
-echo MYSQLD_DATA_DIR=$MYSQLD_DATA_DIR
-echo MYSQLD_LOG_DIR=$MYSQLD_LOG_DIR
-echo MYSQLD_PORT=$MYSQLD_PORT
+echo BASE_DIR=$BASE_DIR
+echo DATA_DIR=$DATA_DIR
+echo LOG_DIR=$LOG_DIR
+echo PORT=$PORT
+if [ -n "$LD_LIBRARY_PATH" ]; then
+echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+fi
 echo
 
-$LAUNCH_PREFIX $MYSQLD_BIN_DIR/mysqld \
+$LAUNCH_PREFIX $DB_EXE_PATH \
  --no-defaults \
- --basedir=$MYSQLD_BASE_DIR \
- --datadir=$MYSQLD_DATA_DIR \
- --general-log-file=${MYSQLD_LOG_DIR}/mysqld.log \
- --port=${MYSQLD_PORT} \
- --pid-file=${MYSQLD_DATA_DIR}/mysqld.pid \
- --socket=${MYSQLD_DATA_DIR}/mysql.sock \
+ --basedir=$BASE_DIR \
+ --datadir=$DATA_DIR \
+ --general-log-file=${LOG_DIR}/mysqld.log \
+ --port=${PORT} \
+ --pid-file=${DATA_DIR}/mysqld.pid \
+ --socket=${DATA_DIR}/mysql.sock \
  --default_authentication_plugin=mysql_native_password \
  --myisam_sort_buffer_size=64M \
  --innodb_log_buffer_size=256M \
@@ -85,5 +119,24 @@ $LAUNCH_PREFIX $MYSQLD_BIN_DIR/mysqld \
  --max_heap_table_size=512M \
  --thread_cache_size=16 &
 
+DB_EXE_BASENAME=`basename "$DB_EXE_PATH"`
 sleep 3
-ps auxwww | grep -i "^USER\|mysqld" | grep -v grep | grep -v launch-mysqld | sed -e's/\(.*\)/\1\n/'
+ps auxwww \
+	| grep -i "^USER\|$DB_EXE_BASENAME" \
+	| grep -v grep \
+	| grep -v launch-mysqld \
+	| sed -e's/\(.*\)/\1\n/'
+
+
+if [ -e "$BASE_DIR/bin/mariadb" ]; then
+	CLIENT_EXE="$BASE_DIR/bin/mariadb"
+elif [ -e "$BASE_DIR/bin/mysql" ]; then
+	CLIENT_EXE="$BASE_DIR/bin/mariadb"
+elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
+	CLIENT_EXE="maridb"
+else
+	CLIENT_EXE="mysql"
+fi
+
+echo "example connect string:"
+echo "	$CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
