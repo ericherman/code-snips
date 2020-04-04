@@ -1,0 +1,2 @@
+#!/bin/sh
+git clean -xffd && git submodule foreach --recursive git clean -xffd
