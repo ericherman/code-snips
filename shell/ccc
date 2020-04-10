@@ -9,6 +9,10 @@ SDL2_CFLAGS=`sdl2-config --cflags`
 SDL2_LIBS=`sdl2-config --libs`
 fi
 
+if [ -f /usr/include/vulkan/vulkan.h ]; then
+VULKAN_LIBS=-lvulkan
+fi
+
 AOUT=$(basename --suffix='.c' $1);
 
 #NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
@@ -46,5 +50,5 @@ gcc \
  -include unistd.h \
  $CFLAGS \
  -o $AOUT \
- $1 -lm -lpthread $SDL2_LIBS $LDFLAGS && \
+ $1 -lm -lpthread -ldl $SDL2_LIBS $VULKAN_LIBS $LDFLAGS && \
  ls -l $AOUT
