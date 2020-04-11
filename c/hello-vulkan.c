@@ -123,8 +123,17 @@ const char *vulkan_return_code_to_string(VkResult vk_res)
 	}
 }
 
+#define vkDo(pres, func, ...) do { \
+	*(pres) = func(__VA_ARGS__); \
+	if (*(pres) != VK_SUCCESS) { \
+		const char *v_func_str = #func; \
+		const char *v_err_str = vulkan_return_code_to_string(*(pres)); \
+		unsigned long v_ule = *(pres); \
+		logerror("%s returned %lu, %s", v_func_str, v_ule, v_err_str); \
+	} } while (0)
+
 /* VkInstance is a pointer type */
-VkInstance hello_vulkanCreate(VkAllocationCallbacks *vk_allocator)
+VkInstance hello_vulkan_create(VkAllocationCallbacks *alloctr)
 {
 	assert(sizeof(VkInstance) == sizeof(void *));
 
@@ -149,44 +158,41 @@ VkInstance hello_vulkanCreate(VkAllocationCallbacks *vk_allocator)
 
 	VkInstance vk = NULL;
 	VkResult vk_res;
-	vk_res = vkCreateInstance(&vk_inst_create_info, vk_allocator, &vk);
+	vkDo(&vk_res, vkCreateInstance, &vk_inst_create_info, alloctr, &vk);
 	if (vk_res != VK_SUCCESS) {
-		const char *err_str = vulkan_return_code_to_string(vk_res);
-		unsigned long ule = vk_res;
-		logerror("vkCreateInstance returned %lu, %s", ule, err_str);
 		return NULL;
 	}
 	return vk;
 }
 
-uint32_t queue_family_index(VkPhysicalDevice phys_dev, VkQueueFlags flags)
+VkResult queue_family_index(uint32_t *q_fam_idx, VkPhysicalDevice phys_dev,
+			    VkQueueFlags flags)
 {
 	uint32_t q_fam_cnt = UINT32_MAX;
 	vkGetPhysicalDeviceQueueFamilyProperties(phys_dev, &q_fam_cnt, NULL);
 	if (q_fam_cnt == UINT32_MAX) {
 		logerror("vkGetPhysicalDeviceQueueFamilyProperties");
-		return UINT32_MAX;
+		return VK_RESULT_MAX_ENUM;
 	}
 
 	VkQueueFamilyProperties q_fam_props[q_fam_cnt];
 	vkGetPhysicalDeviceQueueFamilyProperties(phys_dev, &q_fam_cnt,
 						 q_fam_props);
-	uint32_t q_fam_idx = UINT32_MAX;
-	for (size_t i = 0; i < q_fam_cnt && q_fam_idx == UINT32_MAX; ++i) {
+	*q_fam_idx = UINT32_MAX;
+	for (size_t i = 0; i < q_fam_cnt; ++i) {
 		VkQueueFamilyProperties p = q_fam_props[i];
 		if ((p.queueCount > 0) && (p.queueFlags & flags)) {
-			q_fam_idx = i;
+			*q_fam_idx = i;
+			return VK_SUCCESS;
 		}
 	}
-	if (q_fam_idx == UINT32_MAX) {
-		logerror("no match in %lu options\n", (unsigned long)q_fam_cnt);
-	}
-	return q_fam_idx;
+	logerror("no match in %" PRIu32 " options\n", q_fam_cnt);
+	return VK_RESULT_MAX_ENUM;
 }
 
-VkDevice hello_CreateDevice(VkPhysicalDevice phys_dev,
-			    uint32_t q_fam_idx,
-			    VkAllocationCallbacks *allocator)
+VkDevice hello_vulcan_create_device(VkPhysicalDevice phys_dev,
+				    uint32_t q_fam_idx,
+				    VkAllocationCallbacks *alloctr)
 {
 	assert(sizeof(VkDevice) == sizeof(void *));
 
@@ -216,19 +222,18 @@ VkDevice hello_CreateDevice(VkPhysicalDevice phys_dev,
 
 	VkDevice dev = NULL;
 	VkResult result;
-	result = vkCreateDevice(phys_dev, &dev_create_info, allocator, &dev);
+	vkDo(&result, vkCreateDevice, phys_dev, &dev_create_info, alloctr,
+	     &dev);
 	if (result != VK_SUCCESS) {
-		const char *err_str = vulkan_return_code_to_string(result);
-		unsigned long ule = (unsigned long)result;
-		logerror("vkCreateDevice returned %lu, %s", ule, err_str);
 		return NULL;
 	}
 	return dev;
 }
 
-uint32_t memory_type_idx(VkPhysicalDevice phys_dev,
-			 VkMemoryRequirements mem_reqs,
-			 VkMemoryPropertyFlags mem_prop_flags)
+VkResult memory_type_index(uint32_t *mem_type_idx,
+			   VkPhysicalDevice phys_dev,
+			   VkMemoryRequirements mem_reqs,
+			   VkMemoryPropertyFlags mem_prop_flags)
 {
 	VkPhysicalDeviceMemoryProperties mem_props;
 	vkGetPhysicalDeviceMemoryProperties(phys_dev, &mem_props);
@@ -238,7 +243,8 @@ uint32_t memory_type_idx(VkPhysicalDevice phys_dev,
 			VkMemoryType mtype = mem_props.memoryTypes[i];
 			VkMemoryPropertyFlags mpflags = mtype.propertyFlags;
 			if ((mpflags & mem_prop_flags) == mem_prop_flags) {
-				return i;
+				*mem_type_idx = i;
+				return VK_SUCCESS;
 			}
 		}
 	}
@@ -246,7 +252,8 @@ uint32_t memory_type_idx(VkPhysicalDevice phys_dev,
 	logerror("VkMemoryType with flags 0x%lx not found in %lu types",
 		 (unsigned long)mem_prop_flags,
 		 (unsigned long)mem_props.memoryTypeCount);
-	return UINT32_MAX;
+	*mem_type_idx = UINT32_MAX;
+	return VK_RESULT_MAX_ENUM;
 }
 
 VkResult create_exclusive_storage_buffer(vulkan_buffer_s *vulkan_buf,
@@ -273,12 +280,9 @@ VkResult create_exclusive_storage_buffer(vulkan_buffer_s *vulkan_buf,
 	buf_create_info.pQueueFamilyIndices = NULL;
 
 	VkBuffer buffer = NULL;
-	result = vkCreateBuffer(device, &buf_create_info, alloctr, &buffer);
+	vkDo(&result, vkCreateBuffer, device, &buf_create_info, alloctr,
+	     &buffer);
 	if (result != VK_SUCCESS) {
-		const char *func_str = "vkCreateBuffer";
-		const char *err_str = vulkan_return_code_to_string(result);
-		unsigned long ule = (unsigned long)result;
-		logerror("%s returned %lu, %s", func_str, ule, err_str);
 		return result;
 	}
 
@@ -288,10 +292,12 @@ VkResult create_exclusive_storage_buffer(vulkan_buffer_s *vulkan_buf,
 	VkMemoryPropertyFlags mpflags =
 	    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 	    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	uint32_t mem_type_idx = memory_type_idx(phys_dev, mem_reqs, mpflags);
-	if (mem_type_idx == UINT32_MAX) {
+	uint32_t mem_type_idx = UINT32_MAX;
+	vkDo(&result, memory_type_index, &mem_type_idx, phys_dev, mem_reqs,
+	     mpflags);
+	if (result != VK_SUCCESS) {
 		vkDestroyBuffer(device, buffer, alloctr);
-		return VK_RESULT_MAX_ENUM;
+		return result;
 	}
 
 	VkMemoryAllocateInfo alloc_info;
@@ -301,23 +307,15 @@ VkResult create_exclusive_storage_buffer(vulkan_buffer_s *vulkan_buf,
 	alloc_info.memoryTypeIndex = mem_type_idx;
 
 	VkDeviceMemory buf_mem = NULL;
-	result = vkAllocateMemory(device, &alloc_info, alloctr, &buf_mem);
+	vkDo(&result, vkAllocateMemory, device, &alloc_info, alloctr, &buf_mem);
 	if (result != VK_SUCCESS) {
-		const char *func_str = "vkAllocateMemory";
-		const char *err_str = vulkan_return_code_to_string(result);
-		unsigned long ule = (unsigned long)result;
-		logerror("%s returned %lu, %s", func_str, ule, err_str);
 		vkDestroyBuffer(device, buffer, alloctr);
 		return result;
 	}
 
 	VkDeviceSize mem_offset = 0;
-	result = vkBindBufferMemory(device, buffer, buf_mem, mem_offset);
+	vkDo(&result, vkBindBufferMemory, device, buffer, buf_mem, mem_offset);
 	if (result != VK_SUCCESS) {
-		const char *func_str = "vkBindBufferMemory";
-		const char *err_str = vulkan_return_code_to_string(result);
-		unsigned long ule = (unsigned long)result;
-		logerror("%s returned %lu, %s", func_str, ule, err_str);
 		vkFreeMemory(device, buf_mem, alloctr);
 		vkDestroyBuffer(device, buffer, alloctr);
 		return result;
@@ -329,7 +327,7 @@ VkResult create_exclusive_storage_buffer(vulkan_buffer_s *vulkan_buf,
 int main(void)
 {
 	VkAllocationCallbacks *alloctr = NULL;
-	VkInstance vk = hello_vulkanCreate(alloctr);
+	VkInstance vk = hello_vulkan_create(alloctr);
 	if (!vk) {
 		die("No vk?");
 	}
@@ -344,10 +342,16 @@ int main(void)
 	VkPhysicalDevice phys_devs[phys_dev_cnt];
 	vkEnumeratePhysicalDevices(vk, &phys_dev_cnt, phys_devs);
 
+	VkResult result;
+	uint32_t q_fam_idx;
 	VkQueueFlags q_flags = VK_QUEUE_COMPUTE_BIT;
-	uint32_t q_fam_idx = queue_family_index(phys_devs[0], q_flags);
-	assert(q_fam_idx < UINT32_MAX);
-	VkDevice device = hello_CreateDevice(phys_devs[0], q_fam_idx, alloctr);
+	vkDo(&result, queue_family_index, &q_fam_idx, phys_devs[0], q_flags);
+	if (result != VK_SUCCESS) {
+		die("no queue_family_index?");
+	}
+
+	VkDevice device = hello_vulcan_create_device(phys_devs[0], q_fam_idx,
+						     alloctr);
 	if (!device) {
 		die("no Device?");
 	}
@@ -359,8 +363,8 @@ int main(void)
 	vulkan_buffer_s vulkan_buf;
 	VkDeviceSize size = (800 * 600 * 4);
 
-	VkResult result = create_exclusive_storage_buffer(&vulkan_buf,
-				phys_devs[0], device, size, alloctr);
+	result = create_exclusive_storage_buffer(&vulkan_buf, phys_devs[0],
+						 device, size, alloctr);
 
 	vkFreeMemory(device, vulkan_buf.buf_mem, alloctr);
 	vkDestroyBuffer(device, vulkan_buf.buffer, alloctr);
