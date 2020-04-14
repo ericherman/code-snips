@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# https://pureapps2.hw.ac.uk/ws/portalfiles/portal/15477747/1_s2.0_S135503061730062X_main.pdf
+
+ORIGINAL_SPECIFIC_GRAVITY=$1
+FINAL_SPECIFIC_GRAVITY=$2
+
+function usage {
+	echo "usage:"
+	EXE_NAME=`basename $0`
+	echo "  $EXE_NAME [ORIGINAL_SPECIFIC_GRAVITY] [FINAL_SPECIFIC_GRAVITY]"
+	exit 1;
+}
+
+if [ "_${ORIGINAL_SPECIFIC_GRAVITY}_" == "__" ]; then
+	echo "first parameter (original specific gravity) not specified"
+	usage;
+elif [ "_${FINAL_SPECIFIC_GRAVITY}_" == "__" ]; then
+	echo "second parameter (final specific gravity) not specified"
+	usage;
+fi
+
+echo `bc <<<"($ORIGINAL_SPECIFIC_GRAVITY - $FINAL_SPECIFIC_GRAVITY) * 131.25"`
