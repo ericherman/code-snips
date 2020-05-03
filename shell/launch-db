@@ -98,7 +98,8 @@ elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
 else
 	DB_CLIENT_EXE="mysql"
 fi
-CONNECT_STRING="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
+CONNECT_STRING1="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
+CONNECT_STRING2="$DB_CLIENT_EXE --socket=${DATADIR}/${DB_EXE_BASENAME}.sock"
 
 CLIENT_BASENAME=`basename "$DB_CLIENT_EXE"`
 if [ "CLIENT_BASENAME" == "maraidb" ]; then
@@ -124,7 +125,9 @@ if [ -e "$PIDFILE" ]; then
 	kill -0 $PID \
 		&& echo "${DB_EXE_BASENAME} already running?" \
 		&& echo "maybe try something like:" \
-		&& echo "	$CONNECT_STRING" \
+		&& echo "	$CONNECT_STRING1" \
+		&& echo "or:" \
+		&& echo "	$CONNECT_STRING2" \
 		&& exit 1;
 fi
 
@@ -166,5 +169,6 @@ ps auxwww \
 	| grep -v launch-mysqld \
 	| sed -e's/\(.*\)/\1\n/'
 
-echo "example connect string:"
-echo "	$CONNECT_STRING"
+echo "example connect strings:"
+echo "	$CONNECT_STRING1"
+echo "	$CONNECT_STRING2"
