@@ -1,0 +1,34 @@
+#!/bin/bash
+if [[ "_${VERBOSE}_" != "__" && "_${VERBOSE}_" != "_0_" ]] ; then
+	set -x
+fi
+
+if [[ "_$1_" == "__" ]] ; then
+	echo "rotate input around the alphabet wheel"
+	echo "usage: $0 [number] input text"
+	echo -e "\trotation number defaults to 13 (or -13)"
+	exit 1
+fi
+
+_is_int_re='^[0-9\-]+$'
+if [[ $1 =~ $_is_int_re ]] ; then
+	ROTATE=$(( $1 % 26 ))
+	shift
+else
+	ROTATE=13
+fi
+if (( $ROTATE < 0 )) ; then
+	ROTATE=$(( 26 + $ROTATE ))
+fi
+
+AtoZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ROT_L=${AtoZ:$ROTATE:$((26-$ROTATE))}
+ROT_R=${AtoZ:0:$ROTATE}
+ROT_UC=${ROT_L}${ROT_R}
+
+AtoZlc="abcdefghijklmnopqrstuvwxyz"
+ROT_L=${AtoZlc:$ROTATE:$((26-$ROTATE))}
+ROT_R=${AtoZlc:0:$ROTATE}
+ROT_LC=${ROT_L}${ROT_R}
+
+echo "$@" | tr "${AtoZ}${AtoZlc}" "${ROT_UC}${ROT_LC}"
