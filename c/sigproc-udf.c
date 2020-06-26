@@ -163,7 +163,7 @@ int sigproc(UDF_INIT *init, UDF_ARGS *args, char *result,
 		}
 		if (Our_debug) {
 			fflush(stdout);
-			fprintf(stderr, "%s", buf);
+			fprintf(stderr, "%s\n", buf);
 		}
 	}
 
@@ -186,8 +186,8 @@ int signal_pid_at_path(const char *pidfile_path, int sig, char *ebuf,
 	err = kill(pid, sig);
 	if (err) {
 		int save_errno = errno;
-		Errorf(ebuf, len, "Could not send %d to PID %ld (%s)", sig, pid,
-		       strerror(save_errno));
+		Errorf(ebuf, len, "Could not send signal %d to PID %ld (%s)",
+		       sig, pid, strerror(save_errno));
 		return 1;
 	}
 
