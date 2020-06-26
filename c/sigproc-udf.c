@@ -158,13 +158,9 @@ int sigproc(UDF_INIT *init, UDF_ARGS *args, char *result,
 
 	int err = signal_pid_at_path(path, sig, buf, buf_len);
 	if (err) {
-		// I do not understand why setting "error" seems
-		// to cause serious problems, but it does. --eric
-#if (0)
 		if (error) {
 			*error = 1;
 		}
-#endif
 		if (Our_debug) {
 			fflush(stdout);
 			fprintf(stderr, "%s", buf);
