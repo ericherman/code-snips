@@ -1,4 +1,3 @@
-
 /*
 export MDB_BASE=${HOME}/builds/mariadb-10.5
 export MDB_INC=${MDB_BASE}/include/mysql
@@ -11,40 +10,44 @@ gcc -g -Wall -Werror -Wextra -Wpedantic -fPIC -shared -pipe \
 	-o sigproc.so
 cp -v sigproc.so ${MDB_LIB}/sigproc.so
 
-MariaDB [test]> DROP TRIGGER IF EXISTS foo_insert_trigger;
+MariaDB [(none)]> use test;
+DROP TRIGGER IF EXISTS foo_insert_trigger;
 DROP TRIGGER IF EXISTS foo_update_trigger;
 DROP FUNCTION IF EXISTS sigproc;
 DROP TABLE IF EXISTS `foo`;
+show global variables like '%plugin_dir%';
 CREATE FUNCTION sigproc RETURNS int SONAME 'sigproc.so';
+select * from mysql.func;
 
-MariaDB [test]> CREATE TABLE `foo` (
+CREATE TABLE `foo` (
   `foo_id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `foo_dat` int NOT NULL,
   PRIMARY KEY (`foo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+SHOW CREATE TABLE `foo`\G
 
-MariaDB [test]> DELIMITER $
+DELIMITER $
 CREATE TRIGGER foo_insert_trigger
 AFTER INSERT ON `foo`
 FOR EACH ROW
 BEGIN
 DECLARE result int(10);
-SET result = sigproc();
+SET result = sigproc('/tmp/foo.pid');
 END;
 $
 DELIMITER ;
 
-MariaDB [test]> DELIMITER $
+DELIMITER $
 CREATE TRIGGER foo_update_trigger
 AFTER UPDATE ON `foo`
 FOR EACH ROW
 BEGIN
 DECLARE result int(10);
-SET result = sigproc();
+SET result = sigproc('/tmp/foo.pid');
 END;
 $
 DELIMITER ;
-
+SHOW TRIGGERS\G
 
 -- expect signal:
 INSERT INTO `foo`(`foo_dat`) VALUES ('1');
@@ -57,52 +60,64 @@ UPDATE `foo` SET `foo_dat` = 2 WHERE `foo_id`=1;
 
 */
 
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <mysql.h>
-#include <stdbool.h>
+#include <mysql.h>		/* UDF_INIT, UDF_ARGS */
 
-#ifndef SIG_PROC_PID_PATH
-#define SIG_PROC_PID_PATH "/var/run/sig_proc_pid.pid"
+#ifndef DEFAULT_SIG_PROC_PID_PATH
+#define DEFAULT_SIG_PROC_PID_PATH "/var/run/sig_proc_pid.pid"
 #endif
 
-#ifndef EDEBUG
+#ifndef MYSQL_ERRMSG_SIZE
+#define MYSQL_ERRMSG_SIZE 512
+#endif
+
+#ifndef Our_debug
 #ifdef NDEBUG
-#define EDEBUG 0
+#define Our_debug 0
 #endif
-#else
-#define EDEBUG 1
 #endif
 
-#define Errorf(ebuf, ebuf_len, fmt, ...) \
-	do { \
-		if (EDEBUG && ebuf && ebuf_len) { \
-			(ebuf)[0] = '\0'; \
-			size_t _ebuf_len = (ebuf_len); \
-			int _ebuf_pos = snprintf((ebuf), _ebuf_len, \
-					"%s:%d: ", __FILE__, __LINE__); \
-			if (_ebuf_pos > 0 && \
-				(unsigned long long)_ebuf_pos < _ebuf_len) { \
-				size_t _ebuf_left = _ebuf_len - _ebuf_pos; \
-				snprintf((ebuf) + _ebuf_pos, _ebuf_left, \
-					fmt, __VA_ARGS__); \
-			} \
-			fflush(stdout); \
-			fprintf(stderr, "%s\n", (ebuf)); \
-		} \
-	} while (0)
+#ifndef Our_debug
+#define Our_debug 1
+#endif
+
+#ifndef Errorf
+#define Errorf(buf, len, fmt, ...) \
+	errorf(__FILE__, __LINE__, buf, len, fmt, __VA_ARGS__)
+#endif
+
+#ifndef DEBUG_TRACE
+#define DEBUG_TRACE 0
+#endif
+
+#if DEBUG_TRACE
+#define Trace_point() \
+	if (DEBUG_TRACE) { \
+		fprintf(stderr, "%s:%s:%d\n", __FILE__, __FUNCTION__, __LINE__)\
+	}
+#else
+#define Our_no_op do { (void)0; } while (0)
+#define Trace_point() Our_no_op
+#endif
 
 int signal_pid_at_path(const char *pidfile_path, int sig, char *ebuf,
 		       size_t len);
 int pid_from_file(long *pid, const char *pidfile_path, char *ebuf, size_t len);
 
+int errorf(const char *file, int line, char *buf, size_t len,
+	   const char *format, ...);
+
 bool sigproc_init(UDF_INIT *init, UDF_ARGS *args, char *errmsg)
 {
+	Trace_point();
 	if (args->arg_count > 2) {
 		strcpy(errmsg, "sigproc(['path/to/pidfile'], [signal_num])");
 		return 1;
@@ -120,12 +135,14 @@ bool sigproc_init(UDF_INIT *init, UDF_ARGS *args, char *errmsg)
 
 void sigproc_deinit(UDF_INIT *init)
 {
+	Trace_point();
 }
 
 int sigproc(UDF_INIT *init, UDF_ARGS *args, char *result,
 	    unsigned long *length, unsigned char *is_null, unsigned char *error)
 {
-	const char *path = SIG_PROC_PID_PATH;
+	Trace_point();
+	const char *path = DEFAULT_SIG_PROC_PID_PATH;
 	if (args->arg_count > 0) {
 		path = args->args[0];
 	}
@@ -135,13 +152,23 @@ int sigproc(UDF_INIT *init, UDF_ARGS *args, char *result,
 		sig = *((long long *)args->args[1]);
 	}
 
-	size_t buf_len = 1024;
+	size_t buf_len = MYSQL_ERRMSG_SIZE;
 	char buf[buf_len];
-	buf[0] = '\0';
+	memset(buf, 0x00, MYSQL_ERRMSG_SIZE);
 
 	int err = signal_pid_at_path(path, sig, buf, buf_len);
 	if (err) {
-		*error = 1;
+		// I do not understand why setting "error" seems
+		// to cause serious problems, but it does. --eric
+#if (0)
+		if (error) {
+			*error = 1;
+		}
+#endif
+		if (Our_debug) {
+			fflush(stdout);
+			fprintf(stderr, "%s", buf);
+		}
 	}
 
 	return err ? 1 : 0;
@@ -150,6 +177,7 @@ int sigproc(UDF_INIT *init, UDF_ARGS *args, char *result,
 int signal_pid_at_path(const char *pidfile_path, int sig, char *ebuf,
 		       size_t len)
 {
+	Trace_point();
 	long pid = LONG_MIN;
 	int err = pid_from_file(&pid, pidfile_path, ebuf, len);
 	if (err) {
@@ -161,14 +189,18 @@ int signal_pid_at_path(const char *pidfile_path, int sig, char *ebuf,
 
 	err = kill(pid, sig);
 	if (err) {
-		Errorf(ebuf, len, "Could not send %d to PID %ld", sig, pid);
+		int save_errno = errno;
+		Errorf(ebuf, len, "Could not send %d to PID %ld (%s)", sig, pid,
+		       strerror(save_errno));
+		return 1;
 	}
 
-	return err;
+	return 0;
 }
 
 int pid_from_file(long *pid, const char *pidfile_path, char *ebuf, size_t len)
 {
+	Trace_point();
 	FILE *pid_file = fopen(pidfile_path, "r");
 	if (!pid_file) {
 		int save_errno = errno;
@@ -184,4 +216,22 @@ int pid_from_file(long *pid, const char *pidfile_path, char *ebuf, size_t len)
 		return 1;
 	}
 	return 0;
+}
+
+int errorf(const char *file, int line, char *buf, size_t len,
+	   const char *format, ...)
+{
+	Trace_point();
+	int printed1 = snprintf(buf, len, "%s:%d: ", file, line);
+	if ((printed1 < 0) || (((size_t)printed1) >= len)) {
+		return printed1;
+	}
+	va_list args;
+	va_start(args, format);
+	int printed2 = vsnprintf(buf + printed1, len - printed1, format, args);
+	va_end(args);
+	if (printed2 < 0) {
+		return printed2;
+	}
+	return printed1 + printed2;
 }
