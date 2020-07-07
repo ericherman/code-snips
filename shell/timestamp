@@ -1,2 +1,7 @@
 #!/bin/bash
-date --utc +"%Y%m%dT%H%M%SZ"
+if [ "_$1_" != "__" ]; then
+	TS_epoch=$1
+else
+	TS_epoch=`date +%s`
+fi
+date --utc +"%Y%m%dT%H%M%SZ" -d @"$TS_epoch"
