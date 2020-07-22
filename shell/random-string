@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
+
+if [ "_$1_" == "__" ]; then
+	RANDOM_STRING_LENGTH=32
+else
+	RANDOM_STRING_LENGTH=$1
+fi
+
+cat /dev/urandom \
+	| tr --delete --complement 'a-zA-Z0-9' \
+	| fold --width=$RANDOM_STRING_LENGTH \
+	| head --lines=1
