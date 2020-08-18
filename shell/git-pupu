@@ -10,7 +10,9 @@ do
       exit 1
   fi
 
-  if [ "$GIT_VERSION" \> "2.1" ]; then
+  if [ "$GIT_VERSION" \> "2.18" ]; then
+      git pull --rebase=merges && git push; DARN=$?
+  elif [ "$GIT_VERSION" \> "2.1" ]; then
       git pull --rebase=preserve && git push; DARN=$?
   else
       git fetch && git rebase --preserve-merges && git push; DARN=$?
