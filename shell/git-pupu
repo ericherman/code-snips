@@ -4,6 +4,14 @@ GIT_MAJOR_VERSION=`echo "$GIT_VERSION" | cut -f1 -d'.'`
 GIT_MINOR_VERSION=`echo "$GIT_VERSION" | cut -f2 -d'.'`
 GIT_PATCH_VERSION=`echo "$GIT_VERSION" | cut -f3 -d'.'`
 
+if ! [ $GIT_MAJOR_VERSION -ge 1 ]; then
+	echo "GIT_VERSION='$GIT_VERSION'"
+	echo "GIT_MAJOR_VERSION='$GIT_MAJOR_VERSION'"
+	echo "GIT_MINOR_VERSION='$GIT_MINOR_VERSION'"
+	echo "GIT_PATCH_VERSION='$GIT_PATCH_VERSION'"
+	exit 1;
+fi
+
 if [ $GIT_MAJOR_VERSION -gt 2 ]; then
 	HAVE_MERGES=2
 elif [ $GIT_MAJOR_VERSION -eq 2 -a $GIT_MINOR_VERSION -ge 18 ]; then
