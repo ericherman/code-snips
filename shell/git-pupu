@@ -1,5 +1,18 @@
 #!/bin/bash
 GIT_VERSION=`git --version | cut -f3 -d' '`
+GIT_MAJOR_VERSION=`echo "$GIT_VERSION" | cut -f1 -d'.'`
+GIT_MINOR_VERSION=`echo "$GIT_VERSION" | cut -f2 -d'.'`
+GIT_PATCH_VERSION=`echo "$GIT_VERSION" | cut -f3 -d'.'`
+
+if [ $GIT_MAJOR_VERSION -gt 2 ]; then
+	HAVE_MERGES=2
+elif [ $GIT_MAJOR_VERSION -eq 2 -a $GIT_MINOR_VERSION -ge 18 ]; then
+	HAVE_MERGES=2
+elif [ $GIT_MAJOR_VERSION -eq 2 -a $GIT_MINOR_VERSION -ge 1 ]; then
+	HAVE_MERGES=1
+else
+	HAVE_MERGES=0
+fi
 
 DARN=1;
 while [ $DARN -ne 0 ]
@@ -10,9 +23,9 @@ do
       exit 1
   fi
 
-  if [ "$GIT_VERSION" \> "2.18" ]; then
+  if [ $HAVE_MERGES -eq 2 ]; then
       git pull --rebase=merges && git push; DARN=$?
-  elif [ "$GIT_VERSION" \> "2.1" ]; then
+  elif [ $HAVE_MERGES -eq 1 ]; then
       git pull --rebase=preserve && git push; DARN=$?
   else
       git fetch && git rebase --preserve-merges && git push; DARN=$?
