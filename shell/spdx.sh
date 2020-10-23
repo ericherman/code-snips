@@ -31,9 +31,8 @@ function add_spdx() {
 	if [ $? -eq 0 ]; then return; fi
 
 	echo "${COMMENT}SPDX-License-Identifier: ${SPDX_ID}${ENDC}" > $FILE.0
-	FROM_YEAR=$( git log --pretty=format:'%ad' --date=format:%Y $FILE \
-		| sort -u \
-		| head -n1 )
+	FROM_YEAR=$( git log --diff-filter=A --follow \
+			--format='%ad' --date=format:%Y -1 -- $FILE )
 	if [ "$FROM_YEAR" == "$THIS_YEAR" ]; then
 		YEARS="$THIS_YEAR"
 	else
