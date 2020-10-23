@@ -41,7 +41,8 @@ function add_spdx() {
 	fi
 	echo "${COMMENT}Copyright (C) $YEARS ${HOLDER}${ENDC}" >> $FILE.0
 	cat $FILE >> $FILE.0
-	mv $FILE.0 $FILE
+	cat $FILE.0 > $FILE
+	rm $FILE.0
 	git diff $FILE
 }
 
