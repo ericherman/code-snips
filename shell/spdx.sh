@@ -5,7 +5,8 @@ THIS_YEAR=$(date +%Y)
 function add_spdx() {
 	FILE=$1
 	SPDX_ID=$2
-	HOLDER=$3
+	shift 2
+	HOLDER="$@"
 
 	EXTENSION=${FILE##*.}
 	if [ $EXTENSION == "py" ]; then
