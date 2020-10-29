@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright (C) 2020 Eric Herman <eric@freesa.org>
 
 THIS_YEAR=$(date +%Y)
 
