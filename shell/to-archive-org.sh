@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# to-archive-org.sh : send referenced URLs to the wayback machine
+# Copyright (C) 2020 Eric Herman <eric@freesa.org>
 
 # TODO FIXXXME: use something better than bash
 
@@ -9,20 +12,31 @@ rm -f urls.txt
 
 BRANCH_NAME=$(git branch | grep \* | cut -d ' ' -f2)
 for FILE in $(git ls-tree -r --name-only $BRANCH_NAME); do
-	grep '(http[s]\?:' "$FILE" |
-		sed -e's/.*(\(http[s]*:[^)]*\).*/\1/' >> urls.txt
-	grep '<http[s]\?:' "$FILE" |
-		sed -e's/.*<\(http[s]*:[^>]*\).*/\1/' >> urls.txt
-	grep '"http[s]\?:' "$FILE" |
-		sed -e's/.*"\(http[s]*:[^"]*\).*/\1/' >> urls.txt
+	# URLs inside parens
+	grep '(http[s]\?:' "$FILE" \
+		| sed -e's/.*[(]\(http[s]*:[^)]*\).*/\1/' \
+		>> urls.txt
+	# URLs inside angle brackets
+	grep '<http[s]\?:' "$FILE" \
+		| sed -e's/.*<\(http[s]*:[^>]*\).*/\1/' \
+		>> urls.txt
+	# URLs inside double-quotes
+	grep '"http[s]\?:' "$FILE" \
+		| sed -e's/.*"\(http[s]*:[^"]*\).*/\1/' \
+		>> urls.txt
 done
 
 cat urls.txt | sort -u > urls-sorted.txt
 
-PAUSE_TIME=1.5
+# cat urls-sorted.txt
+
+echo "sending to the wayback machine ..."
+#PAUSE_TIME=1.5
+PAUSE_TIME=2.5
 for URL in $(cat urls-sorted.txt); do
 	sleep $PAUSE_TIME
 	ARCHIVE_URL="http://web.archive.org/save/$URL"
 	echo $ARCHIVE_URL
 	curl $ARCHIVE_URL
 done
+echo "done"
