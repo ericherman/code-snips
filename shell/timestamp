@@ -1,7 +1,101 @@
 #!/bin/bash
-if [ "_$1_" != "__" ]; then
-	TS_epoch=$1
-else
-	TS_epoch=`date +%s`
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright (C) 2018 - 2020 Eric Herman <eric@freesa.org>
+
+# using GNU getopt for the long option support
+GETOPT_RES=$(getopt -o 'lnpe:vVh' \
+		--long 'local,nanos,punctuation,epoch:,verbose,version,help' \
+             -n "timestamp" -- "$@")
+# May need to install GNU getopt
+# (e.g.: non-GNU systems like OS X and OpenBSD)
+RV=$?
+if [ $RV != 0 ] ; then
+	echo "error $RV processing parameters" >&2
 fi
-date --utc +"%Y%m%dT%H%M%SZ" -d @"$TS_epoch"
+eval set -- "$GETOPT_RES"
+
+TS_UTC=true
+TS_VERBOSE=false
+TS_HELP=false
+TS_VERSION=false
+TS_NANOS=false
+TS_PUNCT=false
+TS_EPOCH_IN=
+while true; do
+case "$1" in
+	-l | --local ) TS_UTC=false; shift ;;
+	-n | --nanos ) TS_NANOS=true; shift ;;
+	-p | --punctuation ) TS_PUNCT=true; shift ;;
+	-e | --epoch ) TS_EPOCH_IN="$2"; shift 2 ;;
+	-v | --verbose ) TS_VERBOSE=true; set -x; shift ;;
+	-V | --version ) TS_VERSION=true; shift ;;
+	-h | --help ) TS_HELP=true; shift ;;
+	-- ) shift; break ;;
+	* ) break ;;
+esac
+done
+
+if $TS_HELP; then
+cat <<"END_OF_TS_HELP"
+Usage:
+ timestamp [options] [epoch]
+Options:
+ -l, --local		use localtime instead of utc
+ -n, --nanos		use nanoseconds i format
+ -p, --punctuation	use punctuation in format
+ -e, --epoch		use this UNIX epoch
+
+ -v, --verbose		run in verbose mode
+ -h, --help		display this help
+ -V, --version		display version
+END_OF_TS_HELP
+	exit 0;
+fi
+
+if $TS_VERSION; then
+	echo "timestamp version 2.0.0"
+	exit 0;
+fi
+
+TS_NUMBER_RE='^[+-]?[0-9]+([.][0-9]+)?$'
+if [[ "$TS_EPOCH_IN" =~ $TS_NUMBER_RE ]] ; then
+	TS_EPOCH="$TS_EPOCH_IN";
+elif [[ "$1" =~ $TS_NUMBER_RE ]] ; then
+	TS_EPOCH="$1"
+else
+	TS_EPOCH=$(date +%s.%N)
+fi
+
+if $TS_UTC; then
+	TS_DATE_UTC="--utc"
+	if $TS_PUNCT; then
+		if $TS_NANOS; then
+			TS_DATE_FMT='--utc +%Y.%m.%d_%H.%M.%S.%N%z'
+		else
+			TS_DATE_FMT='--utc +%Y.%m.%d_%H.%M.%S%z'
+		fi
+	else
+		if $TS_NANOS; then
+			TS_DATE_FMT='--utc +%Y%m%dT%H%M%S%NZ'
+		else
+			TS_DATE_FMT='--utc +%Y%m%dT%H%M%SZ'
+		fi
+	fi
+else
+	TS_DATE_UTC=""
+	if $TS_PUNCT; then
+		if $TS_NANOS; then
+			TS_DATE_FMT='+%Y.%m.%d_%H.%M.%S.%N%z'
+		else
+			TS_DATE_FMT='+%Y.%m.%d_%H.%M.%S%z'
+		fi
+	else
+		if $TS_NANOS; then
+			TS_DATE_FMT='+%Y%m%dT%H%M%S%N%Z'
+		else
+			TS_DATE_FMT='+%Y%m%dT%H%M%S%Z'
+		fi
+	fi
+fi
+
+date $TS_DATE_UTC $TS_DATE_FMT -d @$TS_EPOCH
