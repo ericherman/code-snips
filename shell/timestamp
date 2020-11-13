@@ -41,7 +41,7 @@ Usage:
  timestamp [options] [epoch]
 Options:
  -l, --local		use localtime instead of utc
- -n, --nanos		use nanoseconds i format
+ -n, --nanos		use nanoseconds in format
  -p, --punctuation	use punctuation in format
  -e, --epoch		use this UNIX epoch
 
