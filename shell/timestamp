@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # Copyright (C) 2018 - 2020 Eric Herman <eric@freesa.org>
 
+TS_INT_RE='^[0-9]+$'
+if [[ "$VERBOSE" =~ $TS_INT_RE ]] && [ "$VERBOSE" -gt 0 ]; then set -x; fi
+
 # using GNU getopt for the long option support
 GETOPT_RES=$(getopt -o 'lnpe:vVh' \
 		--long 'local,nanos,punctuation,epoch:,verbose,version,help' \
