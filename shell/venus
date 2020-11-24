@@ -1,0 +1,13 @@
+#!/bin/bash
+
+REMOTE_HOSTNAME=venus.freesa.org
+LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
+REMOTE_SOCKET=$(ssh $REMOTE_HOSTNAME gpgconf --list-dir agent-socket)
+
+ssh $REMOTE_HOSTNAME rm -fv $REMOTE_SOCKET
+
+# ssh -R $REMOTE_SOCKET:$LOCAL_SOCKET $REMOTE_HOSTNAME
+ssh -A -X \
+	-R $REMOTE_SOCKET:$LOCAL_SOCKET \
+	-L 5901:localhost:5901 \
+	$REMOTE_HOSTNAME
