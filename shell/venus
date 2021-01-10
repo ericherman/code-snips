@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo -ne "\033]0;venus\007"
+
 REMOTE_HOSTNAME=venus.freesa.org
 LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
 REMOTE_SOCKET=$(ssh $REMOTE_HOSTNAME gpgconf --list-dir agent-socket)
@@ -11,3 +13,4 @@ ssh -A -X \
 	-R $REMOTE_SOCKET:$LOCAL_SOCKET \
 	-L 5901:localhost:5901 \
 	$REMOTE_HOSTNAME
+echo -ne "\033]0;\007"
