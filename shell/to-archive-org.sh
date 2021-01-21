@@ -26,7 +26,7 @@ for FILE in $(git ls-tree -r --name-only $BRANCH_NAME); do
 		>> urls.txt
 done
 
-cat urls.txt | sort -u > urls-sorted.txt
+cat urls.txt | cut -f1 -d'#' | sort -u > urls-sorted.txt
 
 # cat urls-sorted.txt
 
@@ -35,8 +35,6 @@ echo "sending to the wayback machine ..."
 PAUSE_TIME=2.5
 for URL in $(cat urls-sorted.txt); do
 	sleep $PAUSE_TIME
-	ARCHIVE_URL="http://web.archive.org/save/$URL"
-	echo $ARCHIVE_URL
-	curl $ARCHIVE_URL
+	wget  --post-data "url=$URL" https://web.archive.org/save
 done
 echo "done"
