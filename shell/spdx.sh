@@ -17,6 +17,9 @@ function add_spdx() {
 	elif [ $EXTENSION == "js" ]; then
 		COMMENT='// '
 		ENDC=''
+	elif [ $EXTENSION == "ts" ]; then
+		COMMENT='// '
+		ENDC=''
 	elif [ $EXTENSION == 'html' ]; then
 		COMMENT='<!-- '
 		ENDC=' -->'
