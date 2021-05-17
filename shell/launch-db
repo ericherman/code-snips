@@ -131,6 +131,19 @@ if [ -e "$PIDFILE" ]; then
 		&& exit 1;
 fi
 
+# CREATE USER root@localhost IDENTIFIED VIA unix_socket OR
+#	mysql_native_password USING password('') ;
+# CREATE USER root@127.0.0.1 IDENTIFIED VIA unix_socket OR
+#	mysql_native_password USING password('') ;
+# GRANT ALL ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION ;
+# GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION ;
+# FLUSH PRIVILEGES ;
+#
+# mysql_tzinfo_to_sql /usr/share/zoneinfo \
+#	| sed 's/Local time zone must be set--see zic manual page/FCTY/'
+
+
+# --auth-root-authentication-method=normal \
 
 TZ=UTC $LAUNCH_PREFIX $DB_EXE_PATH \
  --no-defaults \
