@@ -26,6 +26,8 @@ function add_spdx() {
 	elif [ $EXTENSION == 'scss' ]; then
 		COMMENT='/* '
 		ENDC=' */'
+	elif [ $EXTENSION == 'sql' ]; then
+		COMMENT='-- '
 	elif [ $EXTENSION == 'json' ]; then
 		return
 	else
