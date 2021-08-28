@@ -1,0 +1,6 @@
+#!/bin/bash
+
+xrandr --newmode "1440x960_60.00"  114.51  1440 1528 1680 1920  960 961 964 994  -HSync +Vsync
+xrandr --addmode VNC-0 "1440x960_60.00"
+xrandr --output VNC-0 --mode 1440x960_60.00
+# xrandr -s 1440x960_60.00
