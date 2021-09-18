@@ -2,37 +2,34 @@
 
 # sudo apt install tigervnc-common ssvnc netcat
 # tigervncpasswd $HOME/.config/venus-vnc-password
-
 VNC_PASSWORD_FILE=$HOME/.config/venus-vnc-password
 
 echo -ne "\033]0;venus\007"
 
-
-
 REMOTE_HOSTNAME=venus.freesa.org
-GPG_LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
-GPG_REMOTE_SOCKET=$(ssh $REMOTE_HOSTNAME gpgconf --list-dir agent-socket)
+
+echo "launching headless SSH tunnel for VNC"
 LOCAL_PORT=5901
 REMOTE_PORT=5901
 VNC_LOCAL=localhost:$LOCAL_PORT
 VNC_REMOTE=localhost:$REMOTE_PORT
-
-ssh $REMOTE_HOSTNAME rm -fv $GPG_REMOTE_SOCKET
-
-ssh -A -N \
-	-R $GPG_REMOTE_SOCKET:$GPG_LOCAL_SOCKET \
-	-L $VNC_LOCAL:$VNC_REMOTE \
-	$REMOTE_HOSTNAME \
-	&
+ssh -N -L $VNC_LOCAL:$VNC_REMOTE $REMOTE_HOSTNAME &
 SSH_PID=$!
 trap "kill $SSH_PID" EXIT # kill the ssh tunnel on script exit
 
-# wait for the ssh tunnel to be created
+echo "waiting for the ssh tunnel for VNC to come up"
+#	-z Only scan for listening daemons, without sending any data.
 while ( ! nc -z localhost $LOCAL_PORT ); do
 	sleep 0.25
 done
 
-# start the VNC viewer
-ssvncviewer -passwd $VNC_PASSWORD_FILE -scale 2 $VNC_LOCAL
+echo "launching the VNC viewer"
+ssvncviewer -passwd $VNC_PASSWORD_FILE -scale 2 $VNC_LOCAL &
+
+echo "creating ssh connection for SSH and GPG agents"
+GPG_LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
+GPG_REMOTE_SOCKET=$(ssh $REMOTE_HOSTNAME gpgconf --list-dir agent-socket)
+ssh $REMOTE_HOSTNAME rm -fv $GPG_REMOTE_SOCKET
+ssh -A -X -R $GPG_REMOTE_SOCKET:$GPG_LOCAL_SOCKET $REMOTE_HOSTNAME
 
 echo -ne "\033]0;\007"
