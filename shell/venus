@@ -24,7 +24,17 @@ while ( ! nc -z localhost $LOCAL_PORT ); do
 done
 
 echo "launching the VNC viewer"
-ssvncviewer -passwd $VNC_PASSWORD_FILE -scale 2 $VNC_LOCAL &
+PIXELSX=$( xrandr \
+	| grep '*' \
+	| awk '{ print $1; }' \
+	| cut -f2 -d'x' \
+	| sort -rn \
+	| head -n1 )
+if [ $PIXELSX -gt 2000 ]; then
+	echo "screen is large, setting scale to 2x"
+	VNC_SCALE='-scale 2';
+fi
+ssvncviewer -passwd $VNC_PASSWORD_FILE $VNC_SCALE $VNC_LOCAL &
 
 echo "creating ssh connection for SSH and GPG agents"
 GPG_LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
