@@ -1,9 +1,25 @@
-default: all
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Makefile.func: a demo of defining and calling parameterized functions
+# Copyright (C) 2021 Eric Herman <eric@freesa.org>
 
+# try with:
+# $ make -f Makefile.func
+
+# "replace-it" function parameters:
+#	$(1) STRING for which search
+#	$(2) VALUE with which to replace STRING
+#	$(3) input (template) file
+#	$(4) output file
+# see also:
+#	https://www.gnu.org/software/make/manual/html_node/Call-Function.html
+#	https://www.gnu.org/software/make/manual/html_node/Multi_002dLine.html
+#
 define replace-it
 	sed -e 's/$(3)/$(4)/g' $(1) > $(2)
 	ls -l $(2)
 endef
+
+default: all
 
 hello.tmpl:
 	echo 'hello {NAME}' > hello.tmpl
