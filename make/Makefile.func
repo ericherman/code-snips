@@ -6,10 +6,10 @@
 # $ make -f Makefile.func
 
 # "replace-it" function parameters:
-#	$(1) STRING for which search
-#	$(2) VALUE with which to replace STRING
-#	$(3) input (template) file
-#	$(4) output file
+#	$(1) input (template) file
+#	$(2) output file
+#	$(3) STRING for which search
+#	$(4) VALUE with which to replace STRING
 # see also:
 #	https://www.gnu.org/software/make/manual/html_node/Call-Function.html
 #	https://www.gnu.org/software/make/manual/html_node/Multi_002dLine.html
