@@ -1,0 +1,5 @@
+To see how makefile functions work, try:
+
+```
+make -f Makefile.func
+```

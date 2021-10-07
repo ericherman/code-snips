@@ -1,0 +1,23 @@
+default: all
+
+define replace-it
+	sed -e 's/$(3)/$(4)/g' $(1) > $(2)
+	ls -l $(2)
+endef
+
+hello.tmpl:
+	echo 'hello {NAME}' > hello.tmpl
+	cat hello.tmpl
+
+hello.root.txt: hello.tmpl
+	$(call replace-it,hello.tmpl,hello.root.txt,{NAME},root)
+
+hello.user.txt: hello.tmpl
+	$(call replace-it,hello.tmpl,hello.user.txt,{NAME},$(USER))
+
+all: hello.root.txt hello.user.txt
+	cat hello.root.txt
+	cat hello.user.txt
+
+clean:
+	rm -f hello.tmpl hello.root.txt hello.user.txt:
