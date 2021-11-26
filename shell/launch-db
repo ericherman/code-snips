@@ -1,4 +1,5 @@
 #!/bin/bash
+# see also mariadb-init
 
 while getopts ":b:d:p:l:z:" opt; do
 	case $opt in
@@ -48,7 +49,7 @@ if [ "_${PORT}_" == "__" ]; then
 	PORT=$2
 fi
 if [ "_${PORT}_" == "__" ]; then
-	PORT=13306
+	PORT=3336
 	echo "Option '-p port' not set, defaulting to $PORT"
 fi
 
@@ -98,8 +99,15 @@ elif [ "$DB_EXE_BASENAME" == "mariadbd" ]; then
 else
 	DB_CLIENT_EXE="mysql"
 fi
-CONNECT_STRING1="$DB_CLIENT_EXE --port=$PORT --host=127.0.0.1 --user=root@localhost"
-CONNECT_STRING2="$DB_CLIENT_EXE --socket=${DATADIR}/${DB_EXE_BASENAME}.sock"
+
+if [ -f $DATADIR/root.my.cnf ]; then
+	DEFAULTS=--defaults-file=$DATADIR/root.my.cnf
+else
+	DEFAULTS=--user=root@localhost
+fi
+
+CONNECT_STRING1="$DB_CLIENT_EXE $DEFAULTS --port=$PORT --host=127.0.0.1"
+CONNECT_STRING2="$DB_CLIENT_EXE $DEFAULTS --socket=${DATADIR}/${DB_EXE_BASENAME}.sock"
 
 CLIENT_BASENAME=`basename "$DB_CLIENT_EXE"`
 if [ "CLIENT_BASENAME" == "maraidb" ]; then
@@ -131,6 +139,8 @@ if [ -e "$PIDFILE" ]; then
 		&& exit 1;
 fi
 
+# see mariadb-init
+#
 # CREATE USER root@localhost IDENTIFIED VIA unix_socket OR
 #	mysql_native_password USING password('') ;
 # CREATE USER root@127.0.0.1 IDENTIFIED VIA unix_socket OR

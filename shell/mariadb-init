@@ -1,0 +1,125 @@
+#!/bin/bash
+set -e
+
+if [ "_${BASEDIR}_" == "__" ]; then
+	BASEDIR=${HOME}/builds/mariadb-server
+fi
+if [ "_${DATADIR}_" == "__" ]; then
+	DATADIR=${BASEDIR}/data
+fi
+if [ "_${SOCKET}_" == "__" ]; then
+	SOCKET=${DATADIR}/mariadbd.sock
+fi
+
+if [ ! -d $DATADIR ]; then
+	echo "creating DATADIR: $DATADIR"
+	$BASEDIR/scripts/mariadb-install-db \
+		--no-defaults \
+		--basedir=${BASEDIR} \
+		--datadir=${DATADIR} \
+		--auth-root-authentication-method=normal
+	RV=$?
+	echo 'now you need to start the db, consider `launch-db`'
+	exit $?
+fi
+
+if [ ! -f $DATADIR/mariadb_root_password ]; then
+	echo '# generating random password for MariaDB root database user'
+	touch $DATADIR/mariadb_root_password
+	# that only we can read
+	chmod -v 600 $DATADIR/mariadb_root_password
+	cat /dev/urandom \
+		| tr --delete --complement 'a-zA-Z0-9' \
+		| fold --width=32 \
+		| head --lines=1 \
+		> $DATADIR/mariadb_root_password
+fi
+ls -l $DATADIR/mariadb_root_password
+DB_ROOT_PASSWORD=`cat $DATADIR/mariadb_root_password | xargs`
+if [ ! -f $DATADIR/$USER.my.cnf ]; then
+	echo "# generating root.my.cnf for the db commandline client"
+	touch $DATADIR/root.my.cnf
+	chmod -v 600 $DATADIR/root.my.cnf
+	cat > $DATADIR/root.my.cnf << EOF
+# for use with:
+# mysql --defaults-file=$DATADIR/root.my.cnf
+[client]
+user=root
+password=$DB_ROOT_PASSWORD
+EOF
+fi
+ls -l $DATADIR/root.my.cnf
+
+if [ ! -f $DATADIR/mariadb_${USER}_password ]; then
+	echo '# generating random password for database user'
+	touch $DATADIR/mariadb_${USER}_password
+	cat /dev/urandom \
+		| tr --delete --complement 'a-zA-Z0-9' \
+		| fold --width=32 \
+		| head --lines=1 \
+		> $DATADIR/mariadb_${USER}_password
+	chmod -v 600 $DATADIR/mariadb_${USER}_password
+fi
+DB_USER_PASSWORD=`cat $DATADIR/mariadb_${USER}_password | xargs`
+
+if [ ! -f $DATADIR/$USER.my.cnf ]; then
+	echo "# generating $USER.my.cnf for the db commandline client"
+	touch $DATADIR/$USER.my.cnf
+	chmod -v 600 $DATADIR/$USER.my.cnf
+	cat > $DATADIR/$USER.my.cnf << EOF
+# for use with:
+# mysql --defaults-file=$DATADIR/$USER.my.cnf
+[client]
+user=$USER
+password=$DB_USER_PASSWORD
+EOF
+fi
+ls -l $DATADIR/$USER.my.cnf
+
+${BASEDIR}/bin/mariadb --socket=$SOCKET --user=root << END_OF_SQL
+--
+-- these commands automate the steps from mysql_secure_installation
+-- (the script mysql_secure_installation requires human interaction)
+--
+-- set root password
+--
+UPDATE mysql.global_priv
+    SET priv=json_set(priv,
+        '$.plugin', 'mysql_native_password',
+        '$.authentication_string', PASSWORD('$DB_ROOT_PASSWORD'))
+      WHERE User='root';
+-- Pre MariaDB 10.4 syntax
+--    UPDATE mysql.user
+--        SET Password=PASSWORD('$DB_ROOT_PASSWORD')
+--      WHERE User='root';
+--
+-- remove root remote login access
+--
+DELETE FROM mysql.global_priv
+      WHERE User='root'
+        AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+-- Pre MariaDB 10.4 syntax
+-- DELETE FROM mysql.user
+--      WHERE User='root'
+--        AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+--
+-- remove anonymous users:
+--
+DELETE FROM mysql.global_priv WHERE User='';
+-- Pre MariaDB 10.4 syntax
+-- DELETE FROM mysql.user WHERE User='';
+--
+--
+-- create the $USER user
+--
+CREATE USER IF NOT EXISTS $USER IDENTIFIED BY '$DB_USER_PASSWORD';
+ALTER USER $USER IDENTIFIED BY '$DB_USER_PASSWORD';
+GRANT ALL PRIVILEGES ON \`test\`.* TO \`$USER\`@\`%\`;
+GRANT ALL PRIVILEGES ON \`$USER\`.* TO \`$USER\`@\`%\`;
+GRANT ALL PRIVILEGES ON \`$USER_%\`.* TO \`$USER\`@\`%\`;
+--
+-- save the changes
+FLUSH PRIVILEGES;
+END_OF_SQL
+
+echo "done"
