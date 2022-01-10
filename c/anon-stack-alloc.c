@@ -13,15 +13,13 @@ struct sbuf {
 	char *str;
 };
 
-/* then we can create pointers to anonymous instances */
-#define sbuf_stack_ptr ((struct sbuf *)&((struct sbuf) {0,0,0,NULL}))
-
-/* so we can pass it to an init function designed to be called after a malloc */
 struct sbuf *sbuf_init(struct sbuf *sb, char *buf, size_t len);
 
+/* then we can create pointers to anonymous instances */
+/* so we can pass it to an init function designed to be called after a malloc */
 /* and create a handy "stack_new()" function for stack allocation */
 #define sbuf_stack_new(buf, len) \
-	sbuf_init(sbuf_stack_ptr, buf, len)
+	sbuf_init(&((struct sbuf) {0,0,0,NULL}), buf, len)
 
 /* with no need to call free() for the pointer, because no malloc() */
 /* (naturally, this only makes sense for objects which do not "escape" and */
