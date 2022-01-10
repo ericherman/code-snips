@@ -4,7 +4,7 @@
 /*  gcc -Wall -Wextra -g -O3 -DIS_TEST=1 rev_u8.c -o rev_u8 &&
     { for i in `seq 1000`; do echo $i; ./rev_u8; done } > rev.out &&
     { for func in \
-      rev_u8_loop rev_u8_ugly rev_u8_straight rev_u8_3swaps rev_u8_table; do
+      rev_u8_loop rev_u8_ugly rev_u8_8shifts rev_u8_3swaps rev_u8_table; do
       grep $func rev.out | sort -rn | tail -n10; done } | sort -n
     # -O3, -Os, -O2 may provide different orderings
 */
@@ -41,8 +41,8 @@ uint8_t rev_u8_ugly(uint8_t b)
 	    | ((b & (1 << 7)) ? (1 << 0) : 0);
 }
 
-/* rev_u8_straight returns b with the bit-order reversed. */
-uint8_t rev_u8_straight(uint8_t b)
+/* rev_u8_8shifts returns b with the bit-order reversed. */
+uint8_t rev_u8_8shifts(uint8_t b)
 {
 	/* this could be a fine choice for many applications */
 	/* this is written to be somewhat concise, and not too tricky */
@@ -55,6 +55,13 @@ uint8_t rev_u8_straight(uint8_t b)
 	/* the upper four bits will have to shift some amount down, */
 	/* then AND the shifted byte with a byte having a 1 only in the */
 	/* new position */
+
+	/* whether we AND first or SHIFT first, it compiles the same, thus */
+	/* it's more a question of which is easier to read or think about */
+#ifndef REV_U8_SHIFT_FIRST
+#define REV_U8_SHIFT_FIRST 0
+#endif
+#if (REV_U8_SHIFT_FIRST)
 	return ((b << 7) & (1 << 7))
 	    | ((b << 5) & (1 << 6))
 	    | ((b << 3) & (1 << 5))
@@ -63,6 +70,16 @@ uint8_t rev_u8_straight(uint8_t b)
 	    | ((b >> 3) & (1 << 2))
 	    | ((b >> 5) & (1 << 1))
 	    | ((b >> 7) & (1 << 0));
+#else
+	return ((b & (1 << 0)) << 7)
+	    | ((b & (1 << 1)) << 5)
+	    | ((b & (1 << 2)) << 3)
+	    | ((b & (1 << 3)) << 1)
+	    | ((b & (1 << 4)) >> 1)
+	    | ((b & (1 << 5)) >> 3)
+	    | ((b & (1 << 6)) >> 5)
+	    | ((b & (1 << 7)) >> 7);
+#endif
 }
 
 /* rev_u8_3swaps returns b with the bit-order reversed. */
@@ -299,9 +316,9 @@ unsigned check_exhaustive(void)
 		println_byte_bits("back", b2);
 		failures += Check_equals_u8(b2, b);
 
-		uint8_t r3 = rev_u8_straight(b);
+		uint8_t r3 = rev_u8_8shifts(b);
 		println_byte_bits("rev3", r3);
-		uint8_t b3 = rev_u8_straight(r3);
+		uint8_t b3 = rev_u8_8shifts(r3);
 		println_byte_bits("back", b3);
 		failures += Check_equals_u8(b3, b);
 
@@ -357,19 +374,19 @@ int main_loop(size_t outer_cycles, size_t inner_cycles)
 	failures += Check_equals_u8(0xF0, rev_u8_loop(0x0F));
 	failures += Check_equals_u8(0xF0, rev_u8_ugly(0x0F));
 	failures += Check_equals_u8(0xF0, rev_u8_3swaps(0x0F));
-	failures += Check_equals_u8(0xF0, rev_u8_straight(0x0F));
+	failures += Check_equals_u8(0xF0, rev_u8_8shifts(0x0F));
 	failures += Check_equals_u8(0xF0, rev_u8_table(0x0F));
 
 	failures += Check_equals_u8(0xCC, rev_u8_loop(0x33));
 	failures += Check_equals_u8(0xCC, rev_u8_ugly(0x33));
 	failures += Check_equals_u8(0xCC, rev_u8_3swaps(0x33));
-	failures += Check_equals_u8(0xCC, rev_u8_straight(0x33));
+	failures += Check_equals_u8(0xCC, rev_u8_8shifts(0x33));
 	failures += Check_equals_u8(0xCC, rev_u8_table(0x33));
 
 	failures += Check_equals_u8(0xAA, rev_u8_loop(0x55));
 	failures += Check_equals_u8(0xAA, rev_u8_ugly(0x55));
 	failures += Check_equals_u8(0xAA, rev_u8_3swaps(0x55));
-	failures += Check_equals_u8(0xAA, rev_u8_straight(0x55));
+	failures += Check_equals_u8(0xAA, rev_u8_8shifts(0x55));
 	failures += Check_equals_u8(0xAA, rev_u8_table(0x55));
 
 	if (TEST_EXHAUSTIVE) {
@@ -385,14 +402,14 @@ int main_loop(size_t outer_cycles, size_t inner_cycles)
 	for (size_t i = 0; i < outer_cycles; ++i) {
 		clocks_loop += count_clocks(rev_u8_loop, inner_cycles);
 		clocks_ugly += count_clocks(rev_u8_ugly, inner_cycles);
-		clocks_straight += count_clocks(rev_u8_straight, inner_cycles);
+		clocks_straight += count_clocks(rev_u8_8shifts, inner_cycles);
 		clocks_3swaps += count_clocks(rev_u8_3swaps, inner_cycles);
 		clocks_table += count_clocks(rev_u8_table, inner_cycles);
 	}
 
 	print_clocks(clocks_loop, "rev_u8_loop");
 	print_clocks(clocks_ugly, "rev_u8_ugly");
-	print_clocks(clocks_straight, "rev_u8_straight");
+	print_clocks(clocks_straight, "rev_u8_8shifts");
 	print_clocks(clocks_3swaps, "rev_u8_3swaps");
 	print_clocks(clocks_table, "rev_u8_table");
 
