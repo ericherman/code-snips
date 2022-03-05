@@ -15,13 +15,22 @@ VNC_LOCAL=localhost:$LOCAL_PORT
 VNC_REMOTE=localhost:$REMOTE_PORT
 ssh -N -L $VNC_LOCAL:$VNC_REMOTE $REMOTE_HOSTNAME &
 SSH_PID=$!
-trap "kill $SSH_PID" EXIT # kill the ssh tunnel on script exit
 
 echo "waiting for the ssh tunnel for VNC to come up"
 #	-z Only scan for listening daemons, without sending any data.
 while ( ! nc -z localhost $LOCAL_PORT ); do
 	sleep 0.25
 done
+
+echo "launching mumble"
+mumble mumble://mumble.openelectronicslab.org &
+MUMBLE_PID=$!
+
+function cleanup() {
+	kill $SSH_PID
+	kill $MUMBLE_PID
+}
+trap cleanup EXIT # kill the ssh tunnel and mumble on script exit
 
 echo "launching the VNC viewer"
 PIXELSX=$( xrandr \
