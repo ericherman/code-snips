@@ -31,10 +31,20 @@ cat urls.txt | cut -f1 -d'#' | sort -u > urls-sorted.txt
 # cat urls-sorted.txt
 
 echo "sending to the wayback machine ..."
-#PAUSE_TIME=1.5
-PAUSE_TIME=2.5
+MAX_PER_MINUTE=5
+PAUSE_TIME=$(( 1 + (60 / $MAX_PER_MINUTE) ))
 for URL in $(cat urls-sorted.txt); do
+	echo sleeping for $PAUSE_TIME ....
 	sleep $PAUSE_TIME
-	wget  --post-data "url=$URL" https://web.archive.org/save
+	# $ sudo apt-get install gridsite-clients
+	ENCODED=`urlencode $URL`
+	echo ""
+	echo URL: $URL
+	echo encoded: $ENCODED
+	ARC_ORG_URL=https://web.archive.org/save/$ENCODED
+	# wget  --post-data "url=$URL" https://web.archive.org/save
+	wget \
+		--user-agent="foundation-for-public-code-url-archiver" \
+		$ARC_ORG_URL
 done
 echo "done"
