@@ -42,7 +42,13 @@ for FILE in $(git ls-tree -r --name-only $BRANCH_NAME); do
 		>> urls.txt
 done
 
-cat urls.txt | cut -f1 -d'#' | sort -u > urls-sorted.txt
+# create a list of unique URLs, excluding archive.org
+cat urls.txt \
+	| cut -f1 -d'#' \
+	| grep -v '^https://web.archive.org' \
+	| sort -u \
+	> urls-sorted.txt
+
 URLS_TOTAL=$(wc -l urls-sorted.txt | cut -f1 -d' ')
 
 # cat urls-sorted.txt
