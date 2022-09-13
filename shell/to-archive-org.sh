@@ -69,11 +69,14 @@ for URL in $(cat urls-sorted.txt); do
 	echo URL: $URL
 	echo encoded: $ENCODED
 
+	echo "" >> $ARCHIVER_LOG_FILE
 	echo "----------" >> $ARCHIVER_LOG_FILE
 	echo $URL >> $ARCHIVER_LOG_FILE
 	ARC_ORG_URL=https://web.archive.org/save/$ENCODED
 	echo $ARC_ORG_URL >> $ARCHIVER_LOG_FILE
 	curl --user-agent "$ARCHIVER_USER_AGENT" \
 		$ARC_ORG_URL >> $ARCHIVER_LOG_FILE
+	echo "" >> $ARCHIVER_LOG_FILE
+	echo "----------" >> $ARCHIVER_LOG_FILE
 done
 echo "done"
