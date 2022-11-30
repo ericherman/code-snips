@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ "_${VERBOSE}_" == "__" ]; then
+	VERBOSE=0
+fi
+if [ $VERBOSE -gt 0 ]; then
+	LN="ln -v"
+else
+	LN=ln
+fi
+
+best_ctime=0
+for file in $SSH_AUTH_SOCK /tmp/ssh*/*agent*; do
+	sfile=$(readlink -f $file)
+	if [ -S "$sfile" ]; then
+		ctime=$(stat --format=%Z "$sfile")
+		if [ $ctime -gt $best_ctime ]; then
+			$LN -sf $sfile ~/.ssh_auth_sock &&
+			export SSH_AUTH_SOCK=~/.ssh_auth_sock &&
+			best_ctime=$ctime
+		fi
+	fi
+done
