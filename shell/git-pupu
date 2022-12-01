@@ -39,3 +39,4 @@ do
       git fetch && git rebase --preserve-merges && git push; DARN=$?
   fi
 done
+git fetch --all
