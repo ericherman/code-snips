@@ -28,6 +28,9 @@ function add_spdx() {
 		ENDC=' */'
 	elif [ $EXTENSION == 'sql' ]; then
 		COMMENT='-- '
+	elif [ $EXTENSION == 'md' ]; then
+		COMMENT='<!-- '
+		ENDC=' -->'
 	elif [ $EXTENSION == 'json' ]; then
 		return
 	else
