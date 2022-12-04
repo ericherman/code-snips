@@ -6,7 +6,9 @@ VNC_PASSWORD_FILE=$HOME/.config/venus-vnc-password
 
 echo -ne "\033]0;venus\007"
 
-REMOTE_HOSTNAME=venus.freesa.org
+# REMOTE_HOSTNAME=venus.freesa.org
+# REMOTE_HOSTNAME=87.233.128.195
+REMOTE_HOSTNAME=coprinus0.ams1.openelectronicslab.org
 
 echo "launching headless SSH tunnel for VNC"
 LOCAL_PORT=5901
