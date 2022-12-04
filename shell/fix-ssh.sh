@@ -38,29 +38,41 @@ function fix-ssh() {
 	best_ctime=0
 	best_sock=""
 
-	for file in $possible_sockets; do
+	for possible in $possible_sockets; do
 		if [ $fix_ssh_verbose -gt 0 ]; then
 			echo
-			echo $file;
+			echo $possible;
 		fi
 
-		sfile=$($READLINK -f $file)
+		# if a link, follow it and get the canonical file path
+		canonical=$($READLINK -f $possible)
 
 		if [ $fix_ssh_verbose -gt 0 ]; then
-			ls -l $sfile
+			ls -l $canonical
 		fi
 
-		if [ -S "$sfile" ]; then
-			ctime=$(stat --format=%Z "$sfile")
-
+		if ! [ -w "$canonical" ]; then
 			if [ $fix_ssh_verbose -gt 0 ]; then
-				echo "  ctime: $ctime ($(date -d @$ctime))"
+				echo "$canonical is not writable"
 			fi
+			continue
+		fi
 
-			if [ $ctime -gt $best_ctime ]; then
-				best_sock=$sfile
-				best_ctime=$ctime
+		if ! [ -S "$canonical" ]; then
+			if [ $fix_ssh_verbose -gt 0 ]; then
+				echo "$canonical is not a socket"
 			fi
+			continue
+		fi
+
+		ctime=$(stat --format=%Z "$canonical")
+		if [ $fix_ssh_verbose -gt 0 ]; then
+			echo "  ctime: $ctime ($(date -d @$ctime))"
+		fi
+
+		if [ $ctime -gt $best_ctime ]; then
+			best_sock=$canonical
+			best_ctime=$ctime
 		fi
 	done
 
