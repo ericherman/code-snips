@@ -23,17 +23,28 @@ function fix-ssh() {
 
 	if [ $fix_ssh_verbose -gt 0 ]; then
 		LN="ln -v"
+		READLINK="readlink -v"
 	else
 		LN=ln
+		READLINK=readlink
 	fi
 
 	possible_sockets=$(ls -t $SSH_AUTH_SOCK /tmp/ssh*/*agent* 2>/dev/null)
+	if [ $fix_ssh_verbose -gt 0 ]; then
+		echo "possible sockets:"
+		echo "$possible_sockets"
+	fi
 
 	best_ctime=0
 	best_sock=""
 
 	for file in $possible_sockets; do
-		sfile=$(readlink -f $file)
+		if [ $fix_ssh_verbose -gt 0 ]; then
+			echo
+			echo $file;
+		fi
+
+		sfile=$($READLINK -f $file)
 
 		if [ $fix_ssh_verbose -gt 0 ]; then
 			ls -l $sfile
@@ -56,6 +67,13 @@ function fix-ssh() {
 	if [ "_${best_sock}_" == "__" ]; then
 		echo "no sockets found"
 		exit 1
+	fi
+
+	if [ $fix_ssh_verbose -gt 0 ]; then
+		echo
+		echo "best sock: $best_sock"
+		echo "  ctime: $best_ctime ($(date -d @$best_ctime))"
+		echo
 	fi
 
 	$LN -sf $best_sock ~/.ssh_auth_sock &&
