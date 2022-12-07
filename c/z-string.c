@@ -207,7 +207,7 @@ size_t z_string_max_len(const char *str)
 	const size_t *buf = &(remainder[-1]);
 
 	/* extract the size data that was stored there */
-	size_t buf_size = buf[0];
+	size_t max_len = buf[0];
 
-	return buf_size;
+	return max_len;
 }
