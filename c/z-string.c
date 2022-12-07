@@ -1,20 +1,37 @@
 /* This demonstrates using C11's `_Generic` and `_Static_assert` to get
  * type-safety at compile-time.
  *
+ * To run the example, showing the runtime segfault:
+ * cc -DDEMO_BROKEN_CODE -DSKIP_STATIC_ASSERTS c/z-string.c && ./a.out
+ *
+ * To run the example showing _Static_assert compile-time error message:
+ * cc -DDEMO_BROKEN_CODE c/z-string.c
+ *
+ * To run the example without the bug:
+ * cc c/z-string.c && ./a.out
+ *
  * The example is intended to be somewhat realistic (library functions
  * to create string buffers that are compatible with traditional C char
  * pointers) to illustrate a desire for the compile-time type-safety.
  * Noteworthy is that z_string_delete can take either a `char **` or a
- * `const char **`.
+ * `const char **` and thus is declared to take a `void *` which can
+ * be compile-time checked to be of one of these two types.
  *
- * The z_string functions allocate a buffer for a string and store the
- * size of the buffer. The size can be read with the z_string_max_len
- * function, which returns the space available for character content;
- * the space available is exclusive of the extra space which was
- * allocated for the NULL terminator and the max_len information.
- * If a string is provided to the constructor, the buffer will be
- * filled with the contents of that string.
+ * z_string buffers have the declared max_len at the front of the
+ * allocated buffer, followed by the zero-terminated string. The pointer
+ * returned from z_string_new is just the zero-terminated string
+ * portion, so the other functions look in front of the zero-terminated
+ * string to find the declared size.
+ *
+ * The size can be read with the z_string_max_len function, which
+ * returns the space available for character content; the space
+ * available is exclusive of the extra space which was allocated for the
+ * NULL terminator and the max_len information.
+ *
+ * If a string is provided to the constructor, the buffer will be filled
+ * with the contents of that string.
  */
+
 #ifndef Z_STRING_H
 #define Z_STRING_H 1
 
@@ -38,19 +55,31 @@ char *z_string_size_new(size_t max_len, const char *str);
  * Use `z_string_delete` for more type safety. */
 void z_string_delete_ref(void *ref);
 
+#ifdef SKIP_STATIC_ASSERTS
+#define z_string_delete(ref) z_string_delete_ref((void *)ref)
+#else
+
 #ifndef Static_is_type
 #define Static_is_type(x, T) _Generic((x), T: 1, default: 0)	/* C11 */
 #endif
 
 /* A more type-safe wrapper for `z_string_delete_ref`.
  * At compile-time, `ref` is checked to be of type `char **` or
- * `const char **` before passing to `z_string_delete_ref`. */
+ * `const char **` before passing to `z_string_delete_ref`.
+ *
+ * The bit of type-safety provided will not protect against passing
+ * a char * that was not allocated by z_string, however it will
+ * protect from the likely real-world error of passing the `char *`
+ * rather than the address of the 'char *' or `const char *` to a
+ * function which is `void *` in order to deal with the two similar
+ * types of pointers. */
 #define z_string_delete(ref) do { \
 	_Static_assert(Static_is_type(ref, char **) /* C11 */ \
 		    || Static_is_type(ref, const char **) \
 		     , #ref " is not a char **"); \
 	z_string_delete_ref((void *)ref); \
 } while (0)
+#endif /* SKIP_STATIC_ASSERTS */
 
 /* When passed a `char *` or `const char *` allocated via
  * `z_string_size_new`, returns the max_len that was originally
@@ -79,8 +108,14 @@ int main(void)
 	assert(s1);
 	printf("s1 == '%s'\n", s1);
 	printf("z_string_max_len(s1) == %zu\n", z_string_max_len(s1));
+#ifdef DEMO_BROKEN_CODE
+	printf("z_string_delete(s1); /* this is a bug! */\n");
+	z_string_delete(s1);
+#else
 	printf("z_string_delete(&s1);\n");
 	z_string_delete(&s1);
+#endif
+
 	printf("s1 == '%s'\n", s1);
 	assert(!s1);
 
