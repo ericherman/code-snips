@@ -3,46 +3,100 @@
 # terminate after the first line that fails (returns nonzero exit code)
 set -e
 
-if [ "_${PREFIX}_" = "__" ]; then
-PREFIX=${HOME}/builds/perl-blead
+if [ "_${VERBOSE}_" != "__" ] && [ "$VERBOSE" -gt 0 ]; then
+	set -x
 fi
 
-DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
-#DEBUG_OPTS=-UDEBUGGING
+if [ "_${PREFIX}_" = "__" ]; then
+	GIT_BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+	BRANCH_DIR=perl-$(echo "$GIT_BRANCH_NAME" | sed "s@/@-@g")
+	PREFIX=${HOME}/builds/$BRANCH_DIR
+fi
 
-# not perfect, but hopefully okay
-TEST_JOBS=$(( 2 + $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
+if [ "_${DEBUG}_" == "__" ] || [ "$DEBUG" -eq 0 ]; then
+	DEBUG_OPTS="-DNDEBUG"
+else
+	if [ "_${EXTRA_DEBUG_OPTS}_" == "__" ]; then
+		EXTRA_DEBUG_OPTS=0;
+	fi
+	if [ "${EXTRA_DEBUG_OPTS}" -lt 1 ]; then
+		DEBUG_OPTS=-DDEBUGGING
+	else
+		DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
+	fi
+fi
 
-CC="gcc -O3"
+if [ "_${SKIP_MAKE_TEST}_" == "__" ]; then
+	SKIP_MAKE_TEST=0
+fi
 
-./Configure \
-	-Dusedevel \
-	-des \
-        -DSILENT_NO_TAINT_SUPPORT \
-        -Dprefix=${PREFIX} \
-        -Uusevendorprefix \
-        -Dsiteprefix=${PREFIX} \
-        -Dinstallprefix=${PREFIX} \
-        -Dinstallstyle="lib" \
-        -Darchlib=${PREFIX}/lib \
-        -Dman1dir=${PREFIX}/man/man1 \
-        -Dman3dir=${PREFIX}/man/man3 \
-        -Dprivlib=${PREFIX}/lib \
-        -Dsitearch=${PREFIX}/site/lib \
-        -Dsitebin=${PREFIX}/site/bin \
-        -Dsitelib=${PREFIX}/site/lib \
-        -Dsiteman1dir=${PREFIX}/site/man/man1 \
-        -Dsiteman3dir=${PREFIX}/site/man/man3 \
-        -Dcc="${CC}" \
-        -Dlibpth="${PREFIX}/lib" \
-        -Dglibpth="${PREFIX}/lib" \
-        -Dscriptdir="${PREFIX}/bin" \
-        -Uinstallusrbinperl \
-        -Duseshrplib \
-        -Dusesitecustomize \
-	$DEBUG_OPTS \
-        -Di_db \
-        -A 'prepend:libswanted=pthread '
-make
-make test_harness
-make install
+if [ "_${BOOKING_OPTS}_" == "__" ]; then
+	EXTRA_OPTS=""
+else
+	EXTRA_OPTS=\
+	        -Dsiteprefix=${PREFIX} \
+	        -Dinstallprefix=${PREFIX} \
+	        -Dinstallstyle="lib" \
+	        -Darchlib=${PREFIX}/lib \
+	        -Dman1dir=${PREFIX}/man/man1 \
+	        -Dman3dir=${PREFIX}/man/man3 \
+	        -Dprivlib=${PREFIX}/lib \
+	        -Dsitearch=${PREFIX}/site/lib \
+	        -Dsitebin=${PREFIX}/site/bin \
+	        -Dsitelib=${PREFIX}/site/lib \
+	        -Dsiteman1dir=${PREFIX}/site/man/man1 \
+	        -Dsiteman3dir=${PREFIX}/site/man/man3 \
+	        -Dlibpth="${PREFIX}/lib" \
+	        -Dglibpth="${PREFIX}/lib" \
+	        -Dscriptdir="${PREFIX}/bin" \
+		-DSILENT_NO_TAINT_SUPPORT \
+	        -Uusevendorprefix \
+	        -Uinstallusrbinperl \
+	        -Di_db \
+	        -A 'prepend:libswanted=pthread '
+fi
+
+if [ "_${TEST_JOBS}_" == "__" ]; then
+	# not perfect, but hopefully okay
+	TEST_JOBS=$(( $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
+	if [ "$TEST_JOBS" -lt 1 ]; then
+		TEST_JOBS=1
+	fi
+fi
+
+CONFIGURE="./Configure \
+$DEBUG_OPTS \
+-des \
+-Dusedevel \
+-Duseshrplib \
+-Dusesitecustomize \
+-Duselongdouble \
+-Dprefix=${PREFIX} \
+$EXTRA_OPTS"
+
+echo "VERBOSE=$VERBOSE"
+echo "PREFIX=$PREFIX"
+echo "DEBUG_OPTS=$DEBUG_OPTS"
+echo "SKIP_MAKE_TEST=$SKIP_MAKE_TEST"
+echo "TEST_JOBS=$TEST_JOBS"
+echo "CC=$CC"
+echo "CONFIGURE=$CONFIGURE"
+
+mkdir -pv "$PREFIX"
+
+if [ -f Makefile ]; then
+	make clean || true
+fi
+
+time perl regen/embed.pl
+
+time $CONFIGURE
+
+time make -j$JOBS
+
+time make -j$TEST_JOBS minitest
+
+# time make test_harness
+if [ $SKIP_MAKE_TEST -lt 1 ]; then
+	time make -j$TEST_JOBS test
+fi
