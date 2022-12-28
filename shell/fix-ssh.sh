@@ -78,7 +78,7 @@ function fix-ssh() {
 
 	if [ "_${best_sock}_" == "__" ]; then
 		echo "no sockets found"
-		exit 1
+		return 1
 	fi
 
 	if [ $fix_ssh_verbose -gt 0 ]; then
