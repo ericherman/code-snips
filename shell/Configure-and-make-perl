@@ -100,3 +100,5 @@ time make -j$TEST_JOBS minitest
 if [ $SKIP_MAKE_TEST -lt 1 ]; then
 	time make -j$TEST_JOBS test
 fi
+
+date
