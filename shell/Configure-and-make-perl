@@ -16,14 +16,7 @@ fi
 if [ "_${DEBUG}_" == "__" ] || [ "$DEBUG" -eq 0 ]; then
 	DEBUG_OPTS="-DNDEBUG"
 else
-	if [ "_${EXTRA_DEBUG_OPTS}_" == "__" ]; then
-		EXTRA_DEBUG_OPTS=0;
-	fi
-	if [ "${EXTRA_DEBUG_OPTS}" -lt 1 ]; then
-		DEBUG_OPTS=-DDEBUGGING
-	else
-		DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
-	fi
+	DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
 fi
 
 if [ "_${SKIP_MAKE_TEST}_" == "__" ]; then
@@ -56,11 +49,11 @@ else
 	        -A 'prepend:libswanted=pthread '
 fi
 
-if [ "_${TEST_JOBS}_" == "__" ]; then
+if [ "_${JOBS}_" == "__" ]; then
 	# not perfect, but hopefully okay
-	TEST_JOBS=$(( $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
-	if [ "$TEST_JOBS" -lt 1 ]; then
-		TEST_JOBS=1
+	JOBS=$(( $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
+	if [ "$JOBS" -lt 1 ]; then
+		JOBS=1
 	fi
 fi
 
@@ -94,11 +87,11 @@ time $CONFIGURE
 
 time make -j$JOBS
 
-time make -j$TEST_JOBS minitest
+time make -j$JOBS minitest
 
 # time make test_harness
 if [ $SKIP_MAKE_TEST -lt 1 ]; then
-	time make -j$TEST_JOBS test
+	time make -j$JOBS test
 fi
 
 date
