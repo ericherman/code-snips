@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# sudo apt install tigervnc-common ssvnc netcat
+# sudo apt install tigervnc-common tigervnc-tools ssvnc netcat
 # tigervncpasswd $HOME/.config/venus-vnc-password
 VNC_PASSWORD_FILE=$HOME/.config/venus-vnc-password
 
