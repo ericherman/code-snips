@@ -56,6 +56,9 @@ function add_spdx() {
 	elif [ $EXTENSION == 'html' ]; then
 		COMMENT='<!-- '
 		ENDC=' -->'
+	elif [ $EXTENSION == 'css' ]; then
+		COMMENT='/* '
+		ENDC=' */'
 	elif [ $EXTENSION == 'scss' ]; then
 		COMMENT='/* '
 		ENDC=' */'
