@@ -40,18 +40,27 @@ char *octal_encode(char *octal, size_t octal_size, size_t *written,
 		return NULL;
 	}
 
-	size_t bits_len = (bytes_len * CHAR_BIT);
-	for (size_t i = 0; i < bits_len;) {
-		uint8_t oct = 0;
-		for (size_t j = 0; j < OCTAL_BIT && i < bits_len; ++j, ++i) {
-			size_t byte = i / CHAR_BIT;
-			size_t offset = i % CHAR_BIT;
-			uint8_t b = bytes[byte];
-			int set = (b & (1U << offset)) ? 1 : 0;
-			oct = oct | (set << j);
+	for (size_t i = 0; i < bytes_len; i += 3) {
+		uint32_t b24 = 0;
+		size_t used = 0;
+		for (size_t j = 0; j < 3; ++j) {
+			size_t k = i + j;
+			uint32_t bij = 0;
+			if (k < bytes_len) {
+				bij = bytes[k];
+				++used;
+			}
+			b24 = (b24 << CHAR_BIT) | bij;
 		}
-		char coct = '0' + oct;
-		octal[(*written)++] = coct;
+
+		size_t jmax = used == 3 ? 8 : used == 2 ? 6 : used == 1 ? 3 : 0;
+		for (size_t j = 0; j < jmax; ++j) {
+			size_t offset = (21 - (j * 3));
+			uint32_t downshifted = (b24 >> offset);
+			uint8_t oj = (0x07 & downshifted);
+			char coct = '0' + oj;
+			octal[(*written)++] = coct;
+		}
 	}
 
 	octal[*written] = '\0';
@@ -72,19 +81,31 @@ uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
 		return NULL;
 	}
 
-	size_t bits_len = octal_len * OCTAL_BIT;
-	for (size_t i = 0; i < bits_len;) {
-		uint8_t byte = 0x00;
-		for (size_t j = 0; j < CHAR_BIT && i < bits_len; ++j, ++i) {
-			size_t cidx = i / OCTAL_BIT;
-			size_t offset = i % OCTAL_BIT;
-			char c = octal[cidx];
-			assert(c >= '0' && c <= '7');
-			uint8_t oc = c - '0';
-			int set = (oc >> offset) & 0x01;
-			byte = byte | (set << j);
+	for (size_t i = 0; i < octal_len; i += 8) {
+		size_t used = 0;
+		uint32_t b3 = 0;
+		for (size_t j = 0; j < 8; ++j) {
+			uint32_t ob = 0;
+			size_t k = (i + j);
+			if (k < octal_len) {
+				char oc = octal[k];
+				if (!oc) {
+					octal_len = k;
+				} else {
+					assert(oc >= '0' && oc <= '7');
+					ob = oc - '0';
+					++used;
+				}
+			}
+			b3 = (b3 << OCTAL_BIT) | ob;
 		}
-		bytes[(*written)++] = byte;
+
+		size_t jmax = used == 8 ? 3 : used == 6 ? 2 : used == 3 ? 1 : 0;
+		for (size_t j = 0; j < jmax; ++j) {
+			size_t offset = j == 0 ? 16 : j == 1 ? 8 : 0;
+			uint8_t byte = 0xFF & (b3 >> offset);
+			bytes[(*written)++] = byte;
+		}
 	}
 	return bytes;
 }
