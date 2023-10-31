@@ -6,19 +6,52 @@
 #include <Arduino.h>
 #endif
 
-#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 
+/* * * * * * * * *\
+ * API FUNCTIONS *
+\* * * * * * * * */
+char *octal_encode(char *octal, size_t octal_size, size_t *written,
+		   const uint8_t *bytes, size_t bytes_len);
+
+uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
+		      const char *octal, size_t octal_len);
+
+size_t octal_find_first_nonoctal(const char *octal, size_t octal_size);
+
+size_t octal_encode_size_needed_for_string(size_t bytes_len);
+
+/* round_up should be set to 0 unless the original octal string did not come
+ * from an 8bit binary source, otherwise the trailing bits should be ignored */
+size_t octal_decode_size_needed_for_bytes(size_t octal_str_len, int round_up);
+
+/* * * * * * * * *\
+ * Sanity checks *
+\* * * * * * * * */
+#define STR(x) #x
+#define CONCAT_NUM(msg,num) msg STR(num)
+#define CHAR_BIT_SIZE_MSG CONCAT_NUM("CHAR_BIT == ", CHAR_BIT)
+_Static_assert(CHAR_BIT == 8, "Expect 8, but " CHAR_BIT_SIZE_MSG "?!");
+
 #ifndef OCTAL_BIT
 #define OCTAL_BIT 3
 #endif
+#define OCTAL_BIT_SIZE_MSG CONCAT_NUM("OCTAL_BIT == ", OCTAL_BIT)
+_Static_assert(OCTAL_BIT == 3, "Expect 3, but " OCTAL_BIT_SIZE_MSG "?!");
+
+/* * * * * * * * *\
+ * implementation *
+\* * * * * * * * */
+#include <assert.h>
 
 size_t octal_encode_size_needed_for_string(size_t bytes_len)
 {
-	return ((bytes_len * CHAR_BIT) / OCTAL_BIT) +
-	    (((bytes_len * CHAR_BIT) % OCTAL_BIT) ? 1 : 0) + 1;
+	size_t needed = ((bytes_len * CHAR_BIT) / OCTAL_BIT);
+	size_t round_up = (((bytes_len * CHAR_BIT) % OCTAL_BIT) ? 1 : 0);
+	size_t null_terminator = 1;
+	return needed + round_up + null_terminator;
 }
 
 /* if the octal string came from encoding bytes, there will not be a need
@@ -77,6 +110,19 @@ char *octal_encode(char *octal, size_t octal_size, size_t *written,
 	return octal;
 }
 
+size_t octal_find_first_nonoctal(const char *octal, size_t octal_size)
+{
+	assert(octal);
+
+	for (size_t i = 0; i < octal_size; ++i) {
+		if (octal[i] < '0' || octal[i] > '7') {
+			return i;
+		}
+	}
+
+	return octal_size;
+}
+
 uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
 		      const char *octal, size_t octal_len)
 {
@@ -91,11 +137,7 @@ uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
 	if (bytes_size < needed) {
 		/* maybe there is enough space if we trim trailing non-octal
 		 * characters, like newlines ? */
-		for (size_t i = 0; i < octal_len; ++i) {
-			if (octal[i] < '0' || octal[i] > '7') {
-				octal_len = i;
-			}
-		}
+		octal_len = octal_find_first_nonoctal(octal, octal_len);
 		needed = octal_decode_size_needed_for_bytes(octal_len, 0);
 		if (bytes_size < needed) {
 			return NULL;
@@ -110,10 +152,9 @@ uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
 			size_t k = (i + j);
 			if (k < octal_len) {
 				char oc = octal[k];
-				if (!oc) {
+				if (oc < '0' || oc > '7') {
 					octal_len = k;
 				} else {
-					assert(oc >= '0' && oc <= '7');
 					ob = oc - '0';
 					++used;
 				}
@@ -133,10 +174,21 @@ uint8_t *octal_decode(uint8_t *bytes, size_t bytes_size, size_t *written,
 
 /* ***************************************************************** */
 
-void print_s(const char *s);
-void print_z(size_t z);
-void print_u8_hex(uint8_t b);
-void print_eol(void);
+/* * * * * * * * *\
+ * Demonstration *
+\* * * * * * * * */
+#ifdef ARDUINO
+#define print_s(s) Serial.print(s)
+#define print_z(z) Serial.print(z)
+#define print_u8_hex(b) Serial.print(b, HEX)
+#define print_eol(void) Serial.println()
+#else
+#include <stdio.h>
+#define print_s(s) printf("%s", s)
+#define print_z(z) printf("%zu", z)
+#define print_u8_hex(b) printf("%02x", (unsigned)b)
+#define print_eol(void) printf("\n")
+#endif
 
 size_t demo_round_trip(const uint8_t *bytes, size_t bytes_len,
 		       char *octal, size_t octal_size,
@@ -159,7 +211,7 @@ size_t demo_round_trip(const uint8_t *bytes, size_t bytes_len,
 	print_s(octal);
 	print_s(" (");
 	print_z(written);
-	print_s(" characters written)");
+	print_s(" chars written)");
 	print_eol();
 
 	octal_decode(out, out_size, &written, octal, octal_size);
@@ -184,7 +236,7 @@ size_t demo_round_trip(const uint8_t *bytes, size_t bytes_len,
 
 #define Bytes_size	20
 #define Out_size	Bytes_size
-#define Octal_size	(Bytes_size * 3)
+#define Octal_size	(1 + (size_t)(Bytes_size * (8.0)/(3.0)) + 1)
 size_t loop_demo(size_t loop_count)
 {
 	print_eol();
@@ -230,34 +282,13 @@ void loop(void)
 	delay(delay_ms);
 }
 
-void print_s(const char *s)
-{
-	Serial.print(s);
-}
-
-void print_z(size_t z)
-{
-	Serial.print(z);
-}
-
-void print_u8_hex(uint8_t b)
-{
-	Serial.print(b, HEX);
-}
-
-void print_eol(void)
-{
-	Serial.println();
-}
-
 #else
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-int round_trip_string(const char *str)
+size_t round_trip_string(const char *str)
 {
 	const uint8_t *bytes = (const uint8_t *)str;
 	size_t bytes_len = strlen(str);
@@ -276,13 +307,13 @@ int round_trip_string(const char *str)
 	free(octal);
 	free(out);
 
-	return differ ? EXIT_FAILURE : EXIT_SUCCESS;
+	return differ;
 }
 
 int main(int argc, char **argv)
 {
 	if (argc > 1) {
-		return round_trip_string(argv[1]);
+		return round_trip_string(argv[1]) ? EXIT_FAILURE : EXIT_SUCCESS;
 	}
 
 	/* if no input, do an infinite loop_demo */
@@ -293,25 +324,5 @@ int main(int argc, char **argv)
 		}
 		sleep(1);
 	}
-}
-
-void print_s(const char *s)
-{
-	printf("%s", s);
-}
-
-void print_z(size_t z)
-{
-	printf("%zu", z);
-}
-
-void print_u8_hex(uint8_t b)
-{
-	printf("%02x", (unsigned)b);
-}
-
-void print_eol(void)
-{
-	printf("\n");
 }
 #endif
