@@ -6,9 +6,23 @@
 #include <Arduino.h>
 #endif
 
+#ifdef __cplusplus
+#define Octal__begin_C_functions extern "C" {
+#define Octal__end_C_functions }
+#ifndef _Static_assert
+#define _Static_assert static_assert
+#endif
+#else
+#define Octal__begin_C_functions
+#define Octal__end_C_functions
+#endif
+
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+
+Octal__begin_C_functions
+#undef Octal__begin_C_functions
 
 /* * * * * * * * *\
  * API FUNCTIONS *
@@ -234,7 +248,7 @@ size_t demo_round_trip(const uint8_t *bytes, size_t bytes_len,
 	return differ;
 }
 
-#define Bytes_size	20
+#define Bytes_size	25
 #define Out_size	Bytes_size
 #define Octal_size	(1 + (size_t)(Bytes_size * (8.0)/(3.0)) + 1)
 size_t loop_demo(size_t loop_count)
@@ -326,3 +340,5 @@ int main(int argc, char **argv)
 	}
 }
 #endif
+Octal__end_C_functions
+#undef Octal__end_C_functions
