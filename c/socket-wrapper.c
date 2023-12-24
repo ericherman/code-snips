@@ -1,5 +1,11 @@
-/* Copyright (c) John Millikin <john@john-millikin.com> */
+/* Copyright (C) 2023 John Millikin <john@john-millikin.com> */
+/* Copyright (C) 2023 Eric Herman <eric@freesa.org> */
 /* SPDX-License-Identifier: 0BSD */
+/* Origin:
+    https://john-millikin.com/improved-unix-socket-networking-in-qemu-7.2#qemu-wrapper-c
+    qemu-wrapper.c create a socket from a path for QEMU
+    Improved UNIX socket networking in QEMU 7.2, 2023-04-11 04:17
+*/
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -7,14 +13,16 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 	int sock_fd, rc;
 	char *sock_path;
 	size_t sock_path_len;
-	struct sockaddr_un sock_addr = {AF_UNIX, ""};
+	struct sockaddr_un sock_addr = { AF_UNIX, "" };
 
 	if (argc < 3) {
-		fprintf(stderr, "Usage: %s <socket> <qemu> [args...]\n", argv[0]);
+		fprintf(stderr, "Usage: %s <socket> <program> [args...]\n",
+			argv[0]);
 		return 1;
 	}
 
@@ -32,9 +40,10 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	rc = connect(sock_fd, (struct sockaddr*)&sock_addr, sizeof sock_addr);
+	rc = connect(sock_fd, (struct sockaddr *)&sock_addr, sizeof sock_addr);
 	if (rc == -1) {
-		fprintf(stderr, "Failed to connect to socket \"%s\": ", sock_path);
+		fprintf(stderr, "Failed to connect to socket \"%s\": ",
+			sock_path);
 		perror(NULL);
 		return 1;
 	}
