@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # Copyright (C) 2018 - 2020 Eric Herman <eric@freesa.org>
 
-TS_INT_RE='^[0-9]+$'
-if [[ "$VERBOSE" =~ $TS_INT_RE ]] && [ "$VERBOSE" -gt 0 ]; then set -x; fi
+TS_INTEGER_RE='^[0-9]+$'
+if [[ "$VERBOSE" =~ $TS_INTEGER_RE ]] && [ "$VERBOSE" -gt 0 ]; then set -x; fi
 
 # using GNU getopt for the long option support
-GETOPT_RES=$(getopt -o 'lnpe:vVh' \
-		--long 'local,nanos,punctuation,epoch:,verbose,version,help' \
+GETOPT_RES=$(getopt -o 'lnpdcure:vVh' \
+		--long 'local,nanos,punctuation,dashes,colons,underscore,rfc3339ish,epoch:,verbose,version,help' \
              -n "timestamp" -- "$@")
 # May need to install GNU getopt
 # (e.g.: non-GNU systems like OS X and OpenBSD)
-RV=$?
-if [ $RV != 0 ] ; then
-	echo "error $RV processing parameters" >&2
+TS_RV=$?
+if [ $TS_RV != 0 ] ; then
+	echo "error $TS_RV processing parameters" >&2
 fi
 eval set -- "$GETOPT_RES"
 
@@ -23,12 +23,19 @@ TS_HELP=false
 TS_VERSION=false
 TS_NANOS=false
 TS_PUNCT=false
+TS_DASHES=false
+TS_COLONS=false
+TS_UNDERSCORE=false
 TS_EPOCH_IN=
 while true; do
 case "$1" in
 	-l | --local ) TS_UTC=false; shift ;;
 	-n | --nanos ) TS_NANOS=true; shift ;;
 	-p | --punctuation ) TS_PUNCT=true; shift ;;
+	-d | --dashes ) TS_PUNCT=true; TS_DASHES=true; shift ;;
+	-c | --colons ) TS_PUNCT=true; TS_COLONS=true; shift ;;
+	-u | --underscore ) TS_UNDERSCORE=true; shift ;;
+	-r | --rfc3339ish ) TS_PUNCT=true; TS_DASHES=true; TS_COLONS=true; TS_UNDERSCORE=true; shift;;
 	-e | --epoch ) TS_EPOCH_IN="$2"; shift 2 ;;
 	-v | --verbose ) TS_VERBOSE=true; set -x; shift ;;
 	-V | --version ) TS_VERSION=true; shift ;;
@@ -46,6 +53,10 @@ Options:
  -l, --local		use localtime instead of utc
  -n, --nanos		use nanoseconds in format
  -p, --punctuation	use punctuation in format
+ -d, --dashes		use dashes instead of dots for the date separator
+ -c, --colons		use colons instead of dots in time format
+ -u, --underscore	use '_' instead of 'T' between date and time
+ -r, --rfc3339ish	short for "-p -d -c -u"
  -e, --epoch		use this UNIX epoch
 
  -v, --verbose		run in verbose mode
@@ -56,49 +67,56 @@ END_OF_TS_HELP
 fi
 
 if $TS_VERSION; then
-	echo "timestamp version 2.0.0"
+	echo "timestamp version 3.0.0"
 	exit 0;
 fi
 
 TS_NUMBER_RE='^[+-]?[0-9]+([.][0-9]+)?$'
 if [[ "$TS_EPOCH_IN" =~ $TS_NUMBER_RE ]] ; then
-	TS_EPOCH="$TS_EPOCH_IN";
+	TS_EPOCH="-d @$TS_EPOCH_IN";
 elif [[ "$1" =~ $TS_NUMBER_RE ]] ; then
-	TS_EPOCH="$1"
-else
-	TS_EPOCH=$(date +%s.%N)
+	TS_EPOCH="-d @$1"
 fi
 
+TS_DATE_UTC=
 if $TS_UTC; then
 	TS_DATE_UTC="--utc"
-	if $TS_PUNCT; then
-		if $TS_NANOS; then
-			TS_DATE_FMT='--utc +%Y.%m.%d_%H.%M.%S.%N%z'
-		else
-			TS_DATE_FMT='--utc +%Y.%m.%d_%H.%M.%S%z'
-		fi
-	else
-		if $TS_NANOS; then
-			TS_DATE_FMT='--utc +%Y%m%dT%H%M%S%NZ'
-		else
-			TS_DATE_FMT='--utc +%Y%m%dT%H%M%SZ'
-		fi
-	fi
+fi
+
+if $TS_PUNCT; then
+	TS_ZONE_FMT='%z'
+elif $TS_UTC; then
+	TS_ZONE_FMT='Z'
 else
-	TS_DATE_UTC=""
-	if $TS_PUNCT; then
-		if $TS_NANOS; then
-			TS_DATE_FMT='+%Y.%m.%d_%H.%M.%S.%N%z'
-		else
-			TS_DATE_FMT='+%Y.%m.%d_%H.%M.%S%z'
-		fi
+	TS_ZONE_FMT='%Z'
+fi
+
+TS_DATE_TIME_SEP='T'
+TS_DATE_SEP=
+TS_TIME_SEP=
+if $TS_PUNCT; then
+	if $TS_DASHES; then
+		TS_DATE_SEP='-'
 	else
-		if $TS_NANOS; then
-			TS_DATE_FMT='+%Y%m%dT%H%M%S%N%Z'
-		else
-			TS_DATE_FMT='+%Y%m%dT%H%M%S%Z'
-		fi
+		TS_DATE_SEP='.'
+	fi
+	if $TS_COLONS; then
+		TS_TIME_SEP=':'
+	else
+		TS_TIME_SEP='.'
+	fi
+	if $TS_UNDERSCORE; then
+		TS_DATE_TIME_SEP='_'
 	fi
 fi
 
-date $TS_DATE_UTC $TS_DATE_FMT -d @$TS_EPOCH
+TS_NANOS_FMT=
+if $TS_NANOS; then
+	TS_NANOS_FMT='.%N'
+fi
+
+TS_DATE_FMT="+%Y${TS_DATE_SEP}%m${TS_DATE_SEP}%d"
+TS_TIME_FMT="%H${TS_TIME_SEP}%M${TS_TIME_SEP}%S$TS_NANOS_FMT"
+TS_FMT="${TS_DATE_FMT}${TS_DATE_TIME_SEP}${TS_TIME_FMT}${TS_ZONE_FMT}"
+
+date $TS_DATE_UTC $TS_FMT $TS_EPOCH
