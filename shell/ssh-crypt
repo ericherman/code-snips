@@ -1,0 +1,186 @@
+#!/bin/bash
+# ssh-crypt: a wrapper for ssh and ssl to encrypt and decrypt files
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright (C) 2024 Eric Herman <eric@freesa.org>
+# inspired by https://www.bjornjohansen.com/encrypt-file-using-ssh-key
+
+set -e
+set -o pipefail
+
+SC_SCRIPT_VERSION=0.0.0
+SC_VERBOSE=false
+SC_INTEGER_RE='^[0-9]+$'
+if [[ "$VERBOSE" =~ $SC_INTEGER_RE ]] && [ "$VERBOSE" -gt 0 ]; then
+	set -x
+	SC_VERBOSE=true
+fi
+
+# using GNU getopt for the long option support
+SC_GETOPT_RES=$(getopt -o 'e:d:vVh' \
+		--long 'encrypt:,decrypt:,verbose,version,help' \
+		-n "$(basename $0)" -- "$@")
+# May need to install GNU getopt
+# (e.g.: non-GNU systems like OS X and OpenBSD)
+SC_RV=$?
+if [ $SC_RV != 0 ] ; then
+	echo "error $SC_RV processing parameters, is GNU getopt installed?" >&2
+	exit 1
+fi
+eval set -- "$SC_GETOPT_RES"
+
+SC_ENCRYPT=false
+SC_DECRYPT=false
+SC_HELP=false
+SC_VERSION=false
+SC_KEY=""
+while true; do
+case "$1" in
+	-e | --encrypt ) SC_ENCRYPT=true; SC_KEY="$2"; shift 2 ;;
+	-d | --decrypt ) SC_DECRYPT=true; SC_KEY="$2"; shift 2 ;;
+	-v | --verbose ) SC_VERBOSE=true; set -x; shift ;;
+	-V | --version ) SC_VERSION=true; shift ;;
+	-h | --help ) SC_HELP=true; shift ;;
+	-- ) shift; break ;;
+	* ) break ;;
+esac
+done
+
+function sc-usage() {
+	cat <<END_OF_SC_HELP
+Usage:
+ $(basename $0) [options] path/to/input/file [path/to/symmetric/key]
+Options:
+ -e, --encrypt=/path/to/recipient/ssh-key.pub
+ -d, --decrypt=/path/to/private/ssh-key
+ -v, --verbose		run in verbose mode
+ -h, --help		display this help
+ -V, --version		display version ($SC_SCRIPT_VERSION)
+END_OF_SC_HELP
+}
+
+if $SC_HELP; then
+	sc-usage
+	exit 0;
+fi
+
+if $SC_VERSION; then
+	echo "ssh-crypt version $SC_SCRIPT_VERSION"
+	exit 0;
+fi
+
+if [ "_$SC_FILE" == "_" ]; then
+	SC_FILE="$1"
+fi
+
+if [ "_$SC_FILE" == "_" ] || [ ! -e "$SC_FILE" ]; then
+	echo "must specify a file" >&2
+	sc-usage
+	exit 1
+fi
+
+if $SC_ENCRYPT && $SC_DECRYPT; then
+	echo "encrypt or decrypt, not both" >&2
+	exit 1
+fi
+
+SC_SYMMETRIC_KEY="$2"
+
+SC_FILE_BASE=$(basename --suffix=.enc "$SC_FILE")
+if [ "_$SC_SYMMETRIC_KEY" == "_" ]; then
+	SC_SYMMETRIC_KEY="$SC_FILE_BASE.symmetric-key"
+fi
+
+if $SC_ENCRYPT; then
+	cat <<-EOF
+		#
+		# RSA cannot directly encrypt a piece of data which is larger
+		# than the key size, thus we create a small one-time use
+		# symmetric key:
+		#   $SC_FILE_BASE.symmetric-key
+		# This key will be used to encrypt the clear-text file.
+		# This key will then be encrypted using the recipient's public
+		# key.
+		# The recipient can decrypt the symmetric key using their
+		# private key, and then decrypt the encrypted file using the
+		# the decrypted symmetric key.
+		#
+	EOF
+	openssl rand -out "$SC_SYMMETRIC_KEY" 32
+	openssl aes-256-cbc \
+		-md sha512 \
+		-pbkdf2 \
+		-iter 1000000 \
+		-in "$SC_FILE" \
+		-out "$SC_FILE_BASE.enc" \
+		-pass "file:$SC_SYMMETRIC_KEY"
+
+	if grep 'PUBLIC KEY-----' <( cat "$SC_KEY" ); then
+		SC_PUB_KEY_PEM="$SC_KEY"
+	else
+		SC_KEY_BASE=$(basename "$SC_KEY")
+		SC_PUB_KEY_PEM="$SC_KEY_BASE.pem"
+		echo "openssl pkeyutl needs PEM key format"
+		echo "exporting a PEM version: $SC_PUB_KEY_PEM"
+		ssh-keygen -f "$SC_KEY" -e -m pem \
+			> "$SC_PUB_KEY_PEM"
+	fi
+
+	openssl pkeyutl -encrypt \
+		-pubin -inkey "$SC_PUB_KEY_PEM" \
+		-in  "$SC_SYMMETRIC_KEY" \
+		-out "$SC_SYMMETRIC_KEY.enc"
+	rm "$SC_SYMMETRIC_KEY"
+	ls -l "$SC_FILE" "$SC_FILE_BASE.enc" "$SC_SYMMETRIC_KEY.enc"
+
+	exit 0
+fi
+
+if $SC_DECRYPT; then
+	if grep -q PEM <( file "$SC_KEY" ); then
+		SC_PEM_KEY="$SC_KEY"
+		SC_TEMP_KEY_CREATED=false
+	else
+		echo
+		echo "The key file '$SC_KEY' is not in PEM format"
+		echo "creating a temporary PEM version"
+		echo
+		echo "You will have to confirm the passphrase"
+		echo "and create a passphrase for the temp version as well"
+		echo
+
+		SC_KEY_BASE=$(basename "$SC_KEY")
+		SC_PEM_KEY_DIR=$(mktemp -d "/tmp/$USER.XXXXXXXX")
+		chmod -v 700 "$SC_PEM_KEY_DIR"
+		ls -ld "$SC_PEM_KEY_DIR"
+		SC_PEM_KEY="$SC_PEM_KEY_DIR/$SC_KEY_BASE"
+		cp -v "$SC_KEY" "$SC_PEM_KEY"
+		ssh-keygen -p -m PEM -f "$SC_PEM_KEY"
+		SC_TEMP_KEY_CREATED=true
+	fi
+
+	openssl pkeyutl -decrypt \
+		-inkey "$SC_PEM_KEY" \
+		-in  "$SC_SYMMETRIC_KEY.enc" \
+		-out "$SC_SYMMETRIC_KEY"
+
+	openssl aes-256-cbc -d \
+		-md sha512 \
+		-pbkdf2 \
+		-iter 1000000 \
+		-in  "$SC_FILE" \
+		-out "$SC_FILE_BASE" \
+		-pass "file:$SC_SYMMETRIC_KEY"
+
+	if $SC_TEMP_KEY_CREATED; then
+		echo
+		echo "you may wish to remove the temp key directory via:"
+		echo "    rm -rfv '$SC_PEM_KEY_DIR'"
+		echo
+	fi
+	ls -l "$SC_FILE" "$SC_FILE_BASE"
+
+	exit 0
+fi
+
+sc-usage
+exit 1
