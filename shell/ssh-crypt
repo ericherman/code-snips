@@ -150,15 +150,17 @@ if $SC_ENCRYPT; then
 
 	if $SC_VERBOSE; then cat <<-EOF
 
-		To encrypt the symmetric key using the recipient's SSH public
-		key, it must be in PEM format,
-		( https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail )
-		OpenSSH supports PEM format, but not what is typically found,
-		however we can convert the public key to PEM if needed
+		To encrypt the symmetric key using openssl and the recipient's
+                SSH public key, the public key it must be in PEM format
+		( https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail ).
+		While OpenSSH supports PEM format, this is not what is
+		typically found, however we can convert the public key to PEM
+		if needed (which is likely).
 
 		EOF
 	fi
 
+	# TODO: find a more reliable way to detect PEM format
 	if grep 'PUBLIC KEY-----' <( cat "$SC_KEY" ); then
 		SC_PUB_KEY_PEM="$SC_KEY"
 	else
