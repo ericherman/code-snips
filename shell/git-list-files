@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: Copyright (C) Eric Herman <eric@freesa.org>
+
+# -r Recurse into sub-trees.
+git ls-tree --full-tree -r --name-only HEAD
