@@ -1,2 +1,16 @@
 #!/bin/bash
-perl -c $1 && perltidy $1 && mv $1 $1~ && mv $1.tdy $1
+# set -x
+set -e
+set -o pipefail
+
+for CMD in perl perltidy; do
+	if ! command -v $CMD >/dev/null 2>&1; then
+		echo "no '$CMD' found in PATH" >&2
+		exit 1
+	fi
+done
+
+perl -c $1
+# perltidy $1
+perltidy -i=8 -ci=8 -et=8 -t $1
+mv $1 $1~ && mv $1.tdy $1

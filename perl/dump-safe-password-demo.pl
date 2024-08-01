@@ -11,22 +11,22 @@ use Scalar::Util qw/refaddr/;
 # contents from the log, like this:
 
 {
-    my $secrets = {};    # only accessble inside this block
+	my $secrets = {};    # only accessble inside this block
 
-    sub new {
-        my ( $class, $secret ) = @_;
+	sub new {
+		my ( $class, $secret ) = @_;
 
-        my $this = bless \do { my $anon_scalar }, $class;
+		my $this = bless \do { my $anon_scalar }, $class;
 
-        $secrets->{ refaddr $this} = $secret;
+		$secrets->{ refaddr $this} = $secret;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    sub reveal {
-        my ($this) = @_;
-        return $secrets->{ refaddr $this};
-    }
+	sub reveal {
+		my ($this) = @_;
+		return $secrets->{ refaddr $this};
+	}
 }
 1;
 

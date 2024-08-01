@@ -6,16 +6,16 @@ do('./rewrap') or die $@ || $!;
 use Test::More tests => 4;
 
 sub check_rewrap {
-    my ( $in, $expect, $wrap, $msg ) = @_;
+	my ( $in, $expect, $wrap, $msg ) = @_;
 
-    $msg ||= "rewrap col $wrap";
+	$msg ||= "rewrap col $wrap";
 
-    open my $fhin, "<", \$in;
-    my $out = "";
-    open my $fhout, ">", \$out;
+	open my $fhin, "<", \$in;
+	my $out = "";
+	open my $fhout, ">", \$out;
 
-    rewrap( $fhin, $fhout, $wrap );
-    is( $out, $expect, $msg );
+	rewrap( $fhin, $fhout, $wrap );
+	is( $out, $expect, $msg );
 }
 
 my $in = <<EOF;

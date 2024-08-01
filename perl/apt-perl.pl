@@ -7,8 +7,8 @@ use strict;
 use warnings;
 
 for my $module (@ARGV) {
-    $module =~ s/::/-/g;
-    $module = lc($module);
-    my $lib_name = "lib$module-perl";
-    print $lib_name, "\n";
+	$module =~ s/::/-/g;
+	$module = lc($module);
+	my $lib_name = "lib$module-perl";
+	print $lib_name, "\n";
 }

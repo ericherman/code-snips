@@ -18,28 +18,30 @@ use strict;
 use warnings;
 
 sub extract_copyrights {
-    my ($file) = @_;
-    my $qfile  = quotemeta($file);
-    my $result = `git log --pretty=format:'%ad %aN <%aE>' --date=short $qfile`;
+	my ($file) = @_;
+	my $qfile = quotemeta($file);
+	my $result =
+		`git log --pretty=format:'%ad %aN <%aE>' --date=short $qfile`;
 
-    my $name_count = {};
-    my $name_years = {};
+	my $name_count = {};
+	my $name_years = {};
 
-    for my $line ( split /\n/, $result ) {
-        ( my $year, my $who ) = $line =~ m/^(\d{4})-\d{2}-\d{2}\s(.*)/si;
-        $name_count->{$who}++;
-        $name_years->{$who}->{$year}++;
-    }
-    my $copyright = '';
-    for my $who (
-        sort { $name_count->{$b} <=> $name_count->{$a} }
-        keys %$name_count
-      )
-    {
-        my $years = join ", ", sort keys %{ $name_years->{$who} };
-        $copyright .= "   Copyright (C) $years $who\n";
-    }
-    return $copyright;
+	for my $line ( split /\n/, $result ) {
+		( my $year, my $who ) =
+			$line =~ m/^(\d{4})-\d{2}-\d{2}\s(.*)/si;
+		$name_count->{$who}++;
+		$name_years->{$who}->{$year}++;
+	}
+	my $copyright = '';
+	for my $who (
+		sort { $name_count->{$b} <=> $name_count->{$a} }
+		keys %$name_count
+		)
+	{
+		my $years = join ", ", sort keys %{ $name_years->{$who} };
+		$copyright .= "   Copyright (C) $years $who\n";
+	}
+	return $copyright;
 }
 
 my $lgpl_2_1_or_later_boiler_plate = <<'BOILERPLATE';
@@ -154,20 +156,20 @@ my $lgpl_3_only_boiler_plate = <<'BOILERPLATE';
 BOILERPLATE
 
 my $licenses = {
-    'LGPLv2.1+'    => $lgpl_2_1_or_later_boiler_plate,
-    'LGPLv2.1only' => $lgpl_2_1_only_boiler_plate,
-    'GPLv2+'       => $gpl_2_or_later_boiler_plate,
-    'GPLv2only'    => $gpl_2_only_boiler_plate,
-    'LGPLv3+'      => $lgpl_3_or_later_boiler_plate,
-    'LGPLv3only'   => $lgpl_3_only_boiler_plate,
-    'GPLv3+'       => $gpl_3_or_later_boiler_plate,
-    'GPLv3only'    => $gpl_3_only_boiler_plate,
+	'LGPLv2.1+'    => $lgpl_2_1_or_later_boiler_plate,
+	'LGPLv2.1only' => $lgpl_2_1_only_boiler_plate,
+	'GPLv2+'       => $gpl_2_or_later_boiler_plate,
+	'GPLv2only'    => $gpl_2_only_boiler_plate,
+	'LGPLv3+'      => $lgpl_3_or_later_boiler_plate,
+	'LGPLv3only'   => $lgpl_3_only_boiler_plate,
+	'GPLv3+'       => $gpl_3_or_later_boiler_plate,
+	'GPLv3only'    => $gpl_3_only_boiler_plate,
 };
 
 for my $key ( keys %$licenses ) {
-    if ( !$licenses->{$key} ) {
-        die "whoops! No boilerplate for key '$key'!\n";
-    }
+	if ( !$licenses->{$key} ) {
+		die "whoops! No boilerplate for key '$key'!\n";
+	}
 }
 
 my @argscopy = @ARGV;
@@ -176,21 +178,21 @@ my $license  = shift @argscopy;
 my $license_boilerpate = $licenses->{$license};
 
 if ( !$license_boilerpate ) {
-    die "could not identify license '$license'\n"
-      . "valid options are: '"
-      . join( "', '", sort keys %$licenses ) . "'\n";
+	die "could not identify license '$license'\n"
+		. "valid options are: '"
+		. join( "', '", sort keys %$licenses ) . "'\n";
 }
 
 foreach my $file (@argscopy) {
-    system "mv -v $file ${file}.orig";
-    open( my $fh, '>', $file );
-    my $file_basename = `basename $file`;
-    chomp $file_basename;
-    print $fh "/* $file_basename\n";
-    print $fh extract_copyrights($file), "\n";
-    print $fh $license_boilerpate;
-    print $fh " */\n";
-    close $fh;
-    system "cat ${file}.orig >> $file";
-    system "git diff ${file}";
+	system "mv -v $file ${file}.orig";
+	open( my $fh, '>', $file );
+	my $file_basename = `basename $file`;
+	chomp $file_basename;
+	print $fh "/* $file_basename\n";
+	print $fh extract_copyrights($file), "\n";
+	print $fh $license_boilerpate;
+	print $fh " */\n";
+	close $fh;
+	system "cat ${file}.orig >> $file";
+	system "git diff ${file}";
 }

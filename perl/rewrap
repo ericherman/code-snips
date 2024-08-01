@@ -6,49 +6,49 @@ use warnings;
 rewrap( \*STDIN, \*STDOUT, $ARGV[0] ) unless caller();
 
 sub rewrap {
-    my ( $IN, $OUT, $wrap_col ) = @_;
-    $wrap_col ||= 72;
+	my ( $IN, $OUT, $wrap_col ) = @_;
+	$wrap_col ||= 72;
 
-    my $indent = -1;
-    my $width  = -1;
-    my $indent_space;
+	my $indent = -1;
+	my $width  = -1;
+	my $indent_space;
 
-    my $ensure_indent = sub {
-        my ($line) = @_;
-        return unless $indent < 0;
+	my $ensure_indent = sub {
+		my ($line) = @_;
+		return unless $indent < 0;
 
-        $line =~ /^(\s+)/;
+		$line =~ /^(\s+)/;
 
-        $indent       = $1      ? length($1)    : 0;
-        $indent_space = $indent ? ' ' x $indent : "";
-        $width        = $wrap_col - $indent;
-    };
+		$indent       = $1      ? length($1)    : 0;
+		$indent_space = $indent ? ' ' x $indent : "";
+		$width        = $wrap_col - $indent;
+	};
 
-    my $to_print = "";
-    while ( my $line = <$IN> ) {
-        chomp $line;
-        $ensure_indent->($line);
+	my $to_print = "";
+	while ( my $line = <$IN> ) {
+		chomp $line;
+		$ensure_indent->($line);
 
-        $line =~ s/^\s+|\s+$//g;
+		$line =~ s/^\s+|\s+$//g;
 
-        # end wrapping on empty lines
-        if ( !$line ) {
-            if ($to_print) {
-                print $OUT $indent_space, $to_print, "\n";
-            }
-            $to_print = "";
-            print $OUT "\n";
-            next;
-        }
+		# end wrapping on empty lines
+		if ( !$line ) {
+			if ($to_print) {
+				print $OUT $indent_space, $to_print, "\n";
+			}
+			$to_print = "";
+			print $OUT "\n";
+			next;
+		}
 
-        $to_print .= $line;
-        while ( length($to_print) > $width ) {
-            my $segment = substr( $to_print, 0, $width );
-            print $OUT $indent_space, $segment, "\n";
-            $to_print = substr( $to_print, $width );
-        }
-    }
-    if ($to_print) {
-        print $OUT $indent_space, $to_print, "\n";
-    }
+		$to_print .= $line;
+		while ( length($to_print) > $width ) {
+			my $segment = substr( $to_print, 0, $width );
+			print $OUT $indent_space, $segment, "\n";
+			$to_print = substr( $to_print, $width );
+		}
+	}
+	if ($to_print) {
+		print $OUT $indent_space, $to_print, "\n";
+	}
 }
