@@ -1,10 +1,17 @@
 #!/bin/bash
 
+if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 1 ]; then
+	# verbose is 2 or higher, be very verbose
+	set -x
+fi
+
+# oddly tigervncpasswd can be used to create the passwd for ssvncviewer
 # sudo apt install tigervnc-common tigervnc-tools ssvnc netcat
 # tigervncpasswd $HOME/.config/venus-vnc-password
 VNC_PASSWORD_FILE=$HOME/.config/venus-vnc-password
 
-echo -ne "\033]0;venus\007"
+TERMINAL_TITLE=venus-vnc
+echo -ne "\033]0;$TERMINAL_TITLE\007"
 
 # REMOTE_HOSTNAME=venus.freesa.org
 # REMOTE_HOSTNAME=87.233.128.195
@@ -15,6 +22,7 @@ LOCAL_PORT=5901
 REMOTE_PORT=5901
 VNC_LOCAL=localhost:$LOCAL_PORT
 VNC_REMOTE=localhost:$REMOTE_PORT
+echo "ssh -N -L $VNC_LOCAL:$VNC_REMOTE $REMOTE_HOSTNAME &"
 ssh -N -L $VNC_LOCAL:$VNC_REMOTE $REMOTE_HOSTNAME &
 SSH_PID=$!
 echo "SSH_PID: $SSH_PID"
@@ -26,6 +34,7 @@ while ( ! nc -z localhost $LOCAL_PORT ); do
 done
 
 echo "launching mumble"
+echo "mumble mumble://mumble.openelectronicslab.org &"
 mumble mumble://mumble.openelectronicslab.org &
 MUMBLE_PID=$!
 echo "MUMBLE_PID: $MUMBLE_PID"
@@ -35,6 +44,8 @@ function cleanup() {
 	kill $SSH_PID
 	echo "killing mumble $MUMBLE_PID"
 	kill $MUMBLE_PID
+	echo "clearing the termtitle"
+	echo -ne "\033]0;\007"
 	echo "cleanup complete"
 }
 trap cleanup EXIT # kill the ssh tunnel and mumble on script exit
@@ -52,10 +63,8 @@ if [ $PIXELSX -gt 2000 ]; then
 fi
 ssvncviewer -passwd $VNC_PASSWORD_FILE $VNC_SCALE $VNC_LOCAL &
 
-echo "creating ssh connection for SSH and GPG agents"
+echo "creating an interactive ssh connection with SSH and GPG agents"
 GPG_LOCAL_SOCKET=$(gpgconf --list-dir agent-socket)
 GPG_REMOTE_SOCKET=$(ssh $REMOTE_HOSTNAME gpgconf --list-dir agent-socket)
 ssh $REMOTE_HOSTNAME rm -fv $GPG_REMOTE_SOCKET
 ssh -A -X -R $GPG_REMOTE_SOCKET:$GPG_LOCAL_SOCKET $REMOTE_HOSTNAME
-
-echo -ne "\033]0;\007"
