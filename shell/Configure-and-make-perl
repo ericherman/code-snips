@@ -1,60 +1,41 @@
 #!/bin/bash
 
-# terminate after the first line that fails (returns nonzero exit code)
-set -e
-
-if [ "_${VERBOSE}_" != "__" ] && [ "$VERBOSE" -gt 0 ]; then
+if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 0 ]; then
 	set -x
 fi
 
-if [ "_${PREFIX}_" = "__" ]; then
+# terminate after the first line that fails (returns nonzero exit code)
+set -e
+set -o pipefail
+
+if [ -z "${PREFIX}" ]; then
 	GIT_BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
 	BRANCH_DIR=perl-$(echo "$GIT_BRANCH_NAME" | sed "s@/@-@g")
 	PREFIX=${HOME}/builds/$BRANCH_DIR
 fi
 
-if [ "_${DEBUG}_" == "__" ] || [ "$DEBUG" -eq 0 ]; then
-	DEBUG_OPTS="-DNDEBUG"
+if [ -z "$DEBUG" ] || [ "$DEBUG" -le 0 ] 2>/dev/null; then
+	DEBUG_OPTS="-DNDEBUG $DEBUG_OPTS"
+elif [ -n "$DEBUG" ] && [ "$DEBUG" -gt 0 ]; then
+	DEBUG_OPTS="-Doptimize=-g -DDEBUGGING $DEBUG_OPTS"
 else
-	DEBUG_OPTS="-Doptimize=-g -DDEBUGGING"
+	DEBUG_OPTS="$DEBUG $DEBUG_OPTS"
 fi
 
-if [ "_${SKIP_MAKE_TEST}_" == "__" ]; then
-	SKIP_MAKE_TEST=0
-fi
-
-if [ "_${BOOKING_OPTS}_" == "__" ]; then
-	EXTRA_OPTS=""
-else
-	EXTRA_OPTS=\
-	        -Dsiteprefix=${PREFIX} \
-	        -Dinstallprefix=${PREFIX} \
-	        -Dinstallstyle="lib" \
-	        -Darchlib=${PREFIX}/lib \
-	        -Dman1dir=${PREFIX}/man/man1 \
-	        -Dman3dir=${PREFIX}/man/man3 \
-	        -Dprivlib=${PREFIX}/lib \
-	        -Dsitearch=${PREFIX}/site/lib \
-	        -Dsitebin=${PREFIX}/site/bin \
-	        -Dsitelib=${PREFIX}/site/lib \
-	        -Dsiteman1dir=${PREFIX}/site/man/man1 \
-	        -Dsiteman3dir=${PREFIX}/site/man/man3 \
-	        -Dlibpth="${PREFIX}/lib" \
-	        -Dglibpth="${PREFIX}/lib" \
-	        -Dscriptdir="${PREFIX}/bin" \
-		-DSILENT_NO_TAINT_SUPPORT \
-	        -Uusevendorprefix \
-	        -Uinstallusrbinperl \
-	        -Di_db \
-	        -A 'prepend:libswanted=pthread '
-fi
-
-if [ "_${JOBS}_" == "__" ]; then
+if [ -z "$JOBS" ]; then
 	# not perfect, but hopefully okay
 	JOBS=$(( $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
 	if [ "$JOBS" -lt 1 ]; then
 		JOBS=1
 	fi
+fi
+
+if [ -z "$SKIP_MAKE_TEST" ]; then
+	SKIP_MAKE_TEST=0
+fi
+
+if [ -z "$SKIP_REGEN" ]; then
+	SKIP_REGEN=0
 fi
 
 CONFIGURE="./Configure \
@@ -70,28 +51,38 @@ $EXTRA_OPTS"
 echo "VERBOSE=$VERBOSE"
 echo "PREFIX=$PREFIX"
 echo "DEBUG_OPTS=$DEBUG_OPTS"
+echo "SKIP_REGEN=$SKIP_REGEN"
 echo "SKIP_MAKE_TEST=$SKIP_MAKE_TEST"
 echo "TEST_JOBS=$TEST_JOBS"
 echo "CC=$CC"
 echo "CONFIGURE=$CONFIGURE"
 
+if [ -z "$DRY_RUN" ] || [ "$DRY_RUN" -lt 1 ]; then
+	RUN=
+else
+	RUN=echo
+fi
+
 mkdir -pv "$PREFIX"
 
 if [ -f Makefile ]; then
-	make clean || true
+	$RUN make clean || true
 fi
 
-time perl regen/embed.pl
+if [ "$SKIP_REGEN" -lt 1 ]; then
+	$RUN perl regen/embed.pl
+fi
 
-time $CONFIGURE
 
-time make -j$JOBS
+$RUN $CONFIGURE
 
-time make -j$JOBS minitest
+$RUN make -j$JOBS
 
-# time make test_harness
+$RUN make -j$JOBS minitest
+
+# $RUN make test_harness
 if [ $SKIP_MAKE_TEST -lt 1 ]; then
-	time make -j$JOBS test
+	$RUN make -j$JOBS test
 fi
 
 date
