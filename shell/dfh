@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# df -h | head -n1 &&  df -h | grep '^/dev' | sort -r -k 4 -h
+
+df --human-readable | head --lines=1 \
+&& df --human-readable \
+	| grep '^/dev' \
+	| sort --reverse --key=4 --human-numeric-sort
