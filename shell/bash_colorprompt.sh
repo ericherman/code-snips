@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # guess if we have color
 case "$TERM" in
     linux)       have_color=yes;;
@@ -21,6 +23,7 @@ DARK_GREEN="\[\e[0;32m\]"
 RED="\[\e[31;1m\]"
 DARK_RED="\[\e[0;31m\]"
 BROWN="\[\e[0;33m\]"
+YELLOW="\[\e[0;93m\]"
 
 if [ "_${SUBNET}_" == "__" ]; then
     # laptop7.foo.example.com
@@ -80,6 +83,9 @@ if [ "$color_prompt" == yes ]; then
     if [ $(id -u) -eq 0 ]; then
         psymb="#"
         USER_COLOR=$DARK_RED
+    elif [[ "$USER" =~ "admin" ]]; then
+        USER_COLOR=$YELLOW
+        psymb="\$"
     else
         USER_COLOR=$DARK_GREEN
         psymb="\$"
