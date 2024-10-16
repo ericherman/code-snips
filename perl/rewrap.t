@@ -1,5 +1,6 @@
-use strict;
-use warnings;
+#!/usr/bin/env perl
+
+use 5.034;
 
 do('./rewrap') or die $@ || $!;
 
