@@ -1,0 +1,43 @@
+#!/bin/bash
+
+if ! [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+	echo "Usage: $0 [NUMBER_OF_TASKS]"
+	exit 1
+fi
+NUM_TASKS="$1"
+
+function do-task() {
+	SLEEP_VAL="$(( RANDOM % 5 ))"
+	echo "Task '$1' is running for $SLEEP_VAL seconds"
+	if [ "$SLEEP_VAL" -gt "3" ]; then
+		echo >&2 "Task '$1' is aborting"
+		return 1
+	fi
+	sleep "$SLEEP_VAL"
+	return 0
+}
+
+declare -A PIDS
+declare -A EXIT_CODES
+
+# Start tasks in parallel
+for (( i= 1; i <= NUM_TASKS; ++i )); do
+	do-task "$i" &
+	PIDS[$i]=$!
+done
+
+# Wait for tasks and collect exit codes
+for i in "${!PIDS[@]}"; do
+	wait "${PIDS[$i]}"
+	EXIT_CODES[$i]=$?
+done
+
+# Print exit codes
+EXIT_CODE=0
+for i in "${!EXIT_CODES[@]}"; do
+	echo "Task $i exited with: ${EXIT_CODES[$i]}"
+	if [ "${EXIT_CODES[$i]}" -ne "0" ]; then
+		EXIT_CODE=1
+	fi
+done
+exit $EXIT_CODE
