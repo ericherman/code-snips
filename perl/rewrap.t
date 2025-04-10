@@ -2,7 +2,11 @@
 
 use 5.034;
 
-do('./rewrap') or die $@ || $!;
+# the module is in the same directory as the test
+# thus strip the extension to get the module path:
+(my $module = $0) =~ s/\.[^.]+$//;
+
+do($module) or die $@ || $!;
 
 use Test::More tests => 4;
 
