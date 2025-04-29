@@ -1,0 +1,123 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2024 Stichting Open Electronics Lab
+
+# set -x
+
+# check if the file is part of "source" operation or being run as a script
+(return 0 2>/dev/null) && SOURCED=1 || SOURCED=0
+
+# Both netstat and ss have a very similar interface,
+# Check to see if at least one of them is installed.
+SS_OR_NETSTAT=""
+if command -v ss >/dev/null 2>&1; then
+	SS_OR_NETSTAT=ss
+elif command -v netstat >/dev/null 2>&1; then
+	SS_OR_NETSTAT=netstat
+else
+	echo 2>&1 "ERROR: neither ss (iproute2) nor netstat (net-tools) in PATH"
+	if [ $SOURCED -eq 1 ]; then
+		return -1
+	else
+		exit -1
+	fi
+fi
+function is-port-free()
+{
+	local PORT=$1
+
+	if $SS_OR_NETSTAT -tuln | grep -q ":$PORT\b"; then
+		# PORT is in use
+		return 1
+	else
+		# PORT is free
+		return 0
+	fi
+}
+
+function is-in-list()
+{
+	local SEARCH_FOR=$1
+	shift
+
+	if [ -z "$@" ]; then
+		return 1
+	fi
+	for ELEMENT in $@; do
+		if [ "$ELEMENT" == "$SEARCH_FOR" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+function max-num()
+{
+	echo "$@" | tr ' ' '\n' | grep -v '^$' | sort -n | tail -1
+}
+
+function free-ports-matching()
+{
+	local PORTS=("$@")
+	if [ ${#PORTS[@]} -lt 1 ]; then
+		cat >&2 <<-EOF
+			no ports specified
+
+			example usage:
+
+			$ free-ports-matching 22 80 443 3306
+			40022 40080 40443 43306
+
+			example usage:
+
+			$ EXCLUDE_RANGE_PREFIXES="40000 50000" \\
+			   EXCLUDE_PORTS="20022 10443" \\
+			    free-ports-matching 22 80 443 8080 8443
+			30022 30080 30443 38080 38443
+
+		EOF
+		return 1
+	fi
+	for PORT in "${PORTS[@]}"; do
+		if ! [[ $PORT =~ ^[0-9]+$ ]] ; then
+			echo >&2 "ERROR: port '$PORT' not valid";
+			return 2
+		fi
+	done
+	local MAX_PORT=$( max-num "$@" );
+	if [ "$MAX_PORT" -ge 10000 ]; then
+		echo >&2 "ERROR: port $MAX_PORT too large (over 10000)"
+		return 3
+	fi
+	# first check the big ranges
+	local RANGE_PREFIXES=( $(seq 10000 10000 50000 | shuf) )
+	# if no ports are above 1000, then also check the small ranges
+	if [ "$MAX_PORT" -lt 1000 ]; then
+		RANGE_PREFIXES=( $(seq 10000 1000 63000 | shuf) )
+	fi
+
+	for RANGE_PREFIX in "${RANGE_PREFIXES[@]}"; do
+		if is-in-list $RANGE_PREFIX "$EXCLUDE_RANGE_PREFIXES"; then
+			continue
+		fi
+		FREE_PORTS=()
+		for PORT in "${PORTS[@]}"; do
+			CANDIDATE_PORT=$(( $RANGE_PREFIX + $PORT ))
+			if is-in-list $CANDIDATE_PORT "$EXCLUDE_PORTS" \
+			|| ! is-port-free $CANDIDATE_PORT ; then
+				# Continue to the next iteration
+				# of the outer loop of range_prefixes
+				continue 2
+			fi
+			FREE_PORTS+=( "$CANDIDATE_PORT" )
+		done
+		echo "${FREE_PORTS[@]}"
+		return 0
+	done
+	echo >&2 "ERROR: no range contains enough free ports"
+	return 4
+}
+
+if [ $SOURCED == 0 ]; then
+	free-ports-matching "$@"
+fi

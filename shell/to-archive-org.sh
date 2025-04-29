@@ -1,19 +1,32 @@
 #!/bin/bash
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # to-archive-org.sh : send referenced URLs to the wayback machine
-# Copyright (C) 2020 Eric Herman <eric@freesa.org>
+# Copyright (C) 2020-2025 Eric Herman <eric@freesa.org>
 
 # TODO FIXXXME: use something better than bash
 
-TEST_ENCODED=$(urlencode 'https://example.org')
-EXPECTED_ENCODED="https%3A%2F%2Fexample.org"
+
 UE_DOC=https://manpages.debian.org/testing/gridsite-clients/urlencode.1.en.html
+
+if [ -z "$URLENCODE" ]; then
+	URLENCODE=urlencode
+	if ! command -v $URLENCODE >/dev/null ; then
+		echo >&2 "$URLENCODE not in PATH"
+		echo >&2 "Is gridsite-clients installed?"
+		echo >&2 " e.g.: $UE_DOC"
+		exit 1
+	fi
+fi
+
+TEST_ENCODED=`$URLENCODE 'https://example.org'`
+EXPECTED_ENCODED="https%3A%2F%2Fexample.org"
+
 if [ "_${TEST_ENCODED}_" != "_${EXPECTED_ENCODED}_" ]; then
-	echo "ERROR: urlencode 'https://example.org'"
-	echo " expected: '${EXPECTED_ENCODED}'"
-	echo "  but was: '${TEST_ENCODED}'"
-	echo "Is gridsite-clients installed?"
-	echo " e.g.: $UE_DOC"
+	echo >&2 "ERROR: $URLENCODE 'https://example.org'"
+	echo >&2 " expected: '${EXPECTED_ENCODED}'"
+	echo >&2 "  but was: '${TEST_ENCODED}'"
+	echo >&2 "Is gridsite-clients installed?"
+	echo >&2 " e.g.: $UE_DOC"
 	exit 1
 fi
 
@@ -76,7 +89,7 @@ for URL in $(cat urls-sorted.txt); do
 	echo sleeping for $PAUSE_TIME ....
 	sleep $PAUSE_TIME
 	# $ sudo apt-get install gridsite-clients
-	ENCODED=`urlencode $URL`
+	ENCODED=`$URLENCODE $URL`
 	echo ""
 	URLS_COUNT=$(( $URLS_COUNT + 1 ))
 	echo "$URLS_COUNT of $URLS_TOTAL"
