@@ -18,8 +18,13 @@ AOUT=$(basename --suffix='.c' $1);
 #NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
 NOISY_FLAGS='-Wall -Wextra -Wpedantic'
 
+# -Wl,--gc-sections,--print-gc-sections
 gcc \
  $NOISY_FLAGS \
+ -flto \
+ -fdata-sections \
+ -ffunction-sections \
+ -Wl,--gc-sections \
  -ggdb -pipe \
  $SDL2_CFLAGS \
  -include alloca.h \
