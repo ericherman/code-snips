@@ -2,7 +2,11 @@
 set -ex
 
 PROCS=$( grep -c ^processor /proc/cpuinfo )
-JOBS=$(( 2 + $PROCS ))
+if [ $PROCS -lt 4 ]; then
+	JOBS=3
+else
+	JOBS=$(( $PROCS - 1 ))
+fi
 echo "JOBS=$JOBS"
 
 time {
