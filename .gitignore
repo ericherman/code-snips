@@ -1,4 +1,5 @@
 *.o
 *~
 *.swp
+*.prof
 __pycache__
