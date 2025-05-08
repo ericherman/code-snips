@@ -2,7 +2,7 @@
 #
 # cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-32} | head -n 1
 
-if [ "_${VERBOSE}_" != "__" ] && [ "${VERBOSE}" -gt 0 ]; then
+if [ -n "${VERBOSE}" ] && [ "${VERBOSE}" -gt 0 ]; then
 	set -x
 fi
 
@@ -14,11 +14,19 @@ fi
 
 if [ "_${2,,}_" == "_base64_" ]; then
 	RANDOM_STRING_CHARS="a-zA-Z0-9+/"
+	BASE=64
 elif [ "_${2,,}_" == "_posix_" ]; then
 	# https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
 	RANDOM_STRING_CHARS="a-zA-Z0-9\._\-"
+	BASE=63
 else
 	RANDOM_STRING_CHARS="a-zA-Z0-9"
+	BASE=62
+fi
+
+if [ -n "${VERBOSE}" ] && [ "${VERBOSE}" -gt 0 ]; then
+	COMBOS=$( bc -l <<<"$BASE ^ $RANDOM_STRING_LENGTH" )
+	BITS=$( bc -l <<<"scale=1; l($COMBOS)/l(2)" )
 fi
 
 cat /dev/urandom \

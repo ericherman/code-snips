@@ -1,0 +1,41 @@
+#!/bin/bash
+# https://xkcd.com/936/
+set -e
+
+if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 1 ]; then
+	set -x
+fi
+
+if [ "_$1_" == "__" ]; then
+	WORDS=3
+else
+	WORDS=$(( 0 + $1 ))
+fi
+
+DIGIT=$((RANDOM % 10))
+
+CAPWORDS="$(shuf /usr/share/dict/american-english \
+		| grep '[A-Z]' \
+		| grep -v '[^A-Za-z]' )"
+CAPWORD=$(echo "$CAPWORDS" | head -n1 )
+
+WORDS=$(( $WORDS - 1 ))
+
+SEP=$( echo '. - _ , / + ; :' | tr ' ' '\n' | shuf | head -n 1 )
+
+REG_WORDS="$(shuf /usr/share/dict/american-english \
+	| grep -v '[^A-Za-z]' )"
+OTHERS=$(echo "$REG_WORDS" \
+	| head -n$WORDS \
+	| tr '\n' "$SEP" \
+	)
+
+if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 0 ]; then
+	CAPWORD_CNT=$(echo "$CAPWORDS" | wc -l )
+	REG_WORD_CNT=$(echo "$REG_WORDS" | wc -l )
+	COMBOS=$( bc -l <<< "$REG_WORD_CNT * ( $REG_WORD_CNT  ^ $WORDS ) * 80" )
+	BITS=$( bc -l <<< "scale=1; l($COMBOS)/l(2)" )
+	echo "combinations: $COMBOS, bits: $BITS"
+fi
+
+echo "$CAPWORD$SEP$OTHERS$DIGIT"
