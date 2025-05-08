@@ -1,0 +1,11 @@
+# yapf3 --in-place *.py
+
+[style]
+based_on_style = yapf
+
+# vim: set tabstop=8 softtabstop=8 shiftwidth=8 noexpandtab :
+indent_width = 8
+use_tabs = True
+
+# continuation_align_style = VALIGN-RIGHT
+continuation_align_style = FIXED
