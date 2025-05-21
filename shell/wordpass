@@ -1,41 +1,38 @@
 #!/bin/bash
 # https://xkcd.com/936/
+
+if [ -z "$VERBOSE" ]; then VERBOSE=0; fi
+if [ "$VERBOSE" -gt 1 ]; then set -x; fi
 set -e
+set -o pipefail
 
-if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 1 ]; then
-	set -x
-fi
-
-if [ "_$1_" == "__" ]; then
-	WORDS=3
+if [ -n "$1" ]; then
+	NUM_WORDS=$(( 0 + $1 ))
 else
-	WORDS=$(( 0 + $1 ))
+	NUM_WORDS=4
 fi
-
-DIGIT=$((RANDOM % 10))
-
-CAPWORDS="$(shuf /usr/share/dict/american-english \
-		| grep '[A-Z]' \
-		| grep -v '[^A-Za-z]' )"
-CAPWORD=$(echo "$CAPWORDS" | head -n1 )
-
-WORDS=$(( $WORDS - 1 ))
 
 SEP=$( echo '. - _ , / + ; :' | tr ' ' '\n' | shuf | head -n 1 )
+SEP_CNT=8
 
-REG_WORDS="$(shuf /usr/share/dict/american-english \
-	| grep -v '[^A-Za-z]' )"
-OTHERS=$(echo "$REG_WORDS" \
-	| head -n$WORDS \
-	| tr '\n' "$SEP" \
-	)
+# SHUFFLED=$(shuf /usr/share/dict/american-english)
+CANDIDATE_WORDS=$(grep -v '[^A-Za-z\-]' /usr/share/dict/american-english)
+SHUFFLED=$(shuf <<< "$CANDIDATE_WORDS")
+TOPX=$(head -n$NUM_WORDS <<< "$SHUFFLED")
+ASONE=$(tr '\n' "$SEP" <<< "$TOPX")
+DIGIT=$((RANDOM % 10))
+RESULT="$ASONE$DIGIT"
 
-if [ -n "$VERBOSE" ] && [ "$VERBOSE" -gt 0 ]; then
-	CAPWORD_CNT=$(echo "$CAPWORDS" | wc -l )
-	REG_WORD_CNT=$(echo "$REG_WORDS" | wc -l )
-	COMBOS=$( bc -l <<< "$REG_WORD_CNT * ( $REG_WORD_CNT  ^ $WORDS ) * 80" )
-	BITS=$( bc -l <<< "scale=1; l($COMBOS)/l(2)" )
-	echo "combinations: $COMBOS, bits: $BITS"
+# ensure at least one uppercase letter for dumb password constraints
+if ! [[ "$RESULT" =~ [A-Z] ]]; then
+	RESULT="$(tr '[:lower:]' '[:upper:]' <<< ${RESULT:0:1})${RESULT:1}"
 fi
 
-echo "$CAPWORD$SEP$OTHERS$DIGIT"
+if [ "$VERBOSE" -gt 0 ]; then
+	WORD_CNT=$(wc -l <<< "$SHUFFLED")
+	COMBOS=$( bc -l <<< "( $WORD_CNT ^ $NUM_WORDS ) * $SEP_CNT * 10" )
+	BITS=$( bc -l <<< "scale=1; l($COMBOS)/l(2)" )
+	echo "combinations: $COMBOS (bits: $BITS, from $WORD_CNT words)"
+fi
+
+echo "$RESULT"
