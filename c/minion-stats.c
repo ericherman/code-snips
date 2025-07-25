@@ -11,23 +11,31 @@
  *	gcc -Wall -Wextra -g -O2 -DNDEBUG -o minion-stats ./minion-stats.c
  *
  * usage:
- *	./minion-stats $NUM_MINIONS $NUM_D6 $SORT_STATS
- *
- * defaults for parameters: 10 3 0
+ *	./minion-stats --help
  */
 
 #include <assert.h>
+#include <getopt.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
 #ifdef __linux__
 #include <sys/random.h>
 #else
 #include <time.h>
 #endif
 
-#define Default_num_stats 6
+#define Version_str "0.0.0"
+#define Default_num_stats 6U
+#define Default_characters 10U
+#define Default_dice_to_roll 3U
+#define Default_dice_to_keep 3U
+#define Default_num_stats 6U
+#define Default_die_sides 6U
+
 struct charstats {
 	uint16_t *stats;
 	size_t stats_len;
@@ -70,26 +78,26 @@ static size_t rand_z(void)
 #define rand_z(void) ((size_t)rand())
 #endif
 
-void roll_stats(struct charstats *minion, size_t *dice, size_t num_dice,
-		uint16_t die_max_value, size_t dice_to_keep, int sort_stats)
+void roll_stats(struct charstats *minion, size_t *dice, size_t dice_to_roll,
+		uint16_t die_sides, size_t dice_to_keep, int sort_stats)
 {
 	assert(minion != NULL);
 	assert(dice != NULL);
-	assert(num_dice > 0);
+	assert(dice_to_roll > 0);
 
 	minion->total_bonuses = 0;
 	for (size_t s = 0; s < minion->stats_len; ++s) {
 		int stat = 0;
-		for (size_t d = 0; d < num_dice; ++d) {
+		for (size_t d = 0; d < dice_to_roll; ++d) {
 			size_t r = rand_z();
-			dice[d] = (r % die_max_value) + 1;
+			dice[d] = (r % die_sides) + 1;
 		}
 
 		/* sort to get the best dice_to_keep dice */
 		assert(sizeof(dice[0]) == sizeof(size_t));
-		qsort(dice, num_dice, sizeof(size_t), zcmpdesc);
-		for (size_t d = 0; d < dice_to_keep && d < num_dice; ++d) {
-			stat += (d < num_dice ? dice[d] : 1);
+		qsort(dice, dice_to_roll, sizeof(size_t), zcmpdesc);
+		for (size_t d = 0; d < dice_to_keep && d < dice_to_roll; ++d) {
+			stat += (d < dice_to_roll ? dice[d] : 1);
 		}
 
 		minion->stats[s] = stat;
@@ -186,23 +194,6 @@ char *charstats_to_string(char *buf, size_t buf_len, struct charstats *minion)
 	return buf;
 }
 
-
-#ifndef NUM_STATS
-#define NUM_STATS Default_num_stats
-#endif
-
-#ifndef DICE_TO_USE
-#define DICE_TO_USE 3
-#endif
-
-#ifndef DIE_MAX_VALUE
-#define DIE_MAX_VALUE 6
-#endif
-
-#if (DIE_MAX_VALUE > UINT16_MAX)
-#error "(DIE_MAX_VALUE > UINT16_MAX)"
-#endif
-
 #ifndef Make_valgrind_happy
 #ifdef NDEBUG
 #define Make_valgrind_happy 0
@@ -211,54 +202,190 @@ char *charstats_to_string(char *buf, size_t buf_len, struct charstats *minion)
 #endif
 #endif
 
+struct stats_options {
+	size_t characters;
+	size_t dice_to_roll;
+	size_t dice_to_keep;
+	size_t num_stats;
+	size_t die_sides;
+	uint8_t sort_stats;
+	uint8_t verbose;
+	uint8_t help;
+	uint8_t version;
+	int option_index;
+};
+
+static void setz_if_positive(size_t *val, int i)
+{
+	if (i > 0) {
+		*val = (size_t)i;
+	}
+}
+
+static void usage(FILE *out, const char *argv0)
+{
+	fprintf(out, "Usage: %s [OPTION]...\n", argv0);
+	fprintf(out, "Print results of dice stat-rolls\n");
+	fprintf(out, "\t-c, --characters=VAL    "
+		"number of sets of stats to roll [DEFAULT %u]\n",
+		Default_characters);
+	fprintf(out, "\t-r, --dice-to-roll=VAL  "
+		"number of dice rolled per stat [DEFAULT %u]\n",
+		Default_dice_to_roll);
+	fprintf(out, "\t-k, --dice-to-keep=VAL  "
+		"number of dice to keep per stat [DEFAULT %u]\n",
+		Default_dice_to_keep);
+	fprintf(out, "\t-n, --num-stats=VAL     "
+		"number of stats per character [DEFAULT %u]\n",
+		Default_num_stats);
+	fprintf(out, "\t-d, --die-sides=VAL     "
+		"number of faces per die [DEFAULT %u]\n", Default_die_sides);
+	fprintf(out, "\t-s, --sort-stats        "
+		"whether to sort the resulting stats\n");
+	fprintf(out, "\t-h, --help              "
+		"print this message and exit\n");
+	fprintf(out, "\t-v, --verbose           " "verbose output\n");
+	fprintf(out, "\t-V, --version           "
+		"print version (%s), and exit\n", Version_str);
+}
+
+static void parse_args_(struct stats_options *options, int argc, char **argv)
+{
+	assert(options);
+
+	const char *optstring = "c:r:k:n:d:shvV";
+
+	struct option long_options[] = {
+		{ "characters", required_argument, 0, 'c' },
+		{ "dice-to-roll", required_argument, 0, 'r' },
+		{ "dice-to-keep", required_argument, 0, 'k' },
+		{ "num-stats", required_argument, 0, 'n' },
+		{ "die-sides", required_argument, 0, 'd' },
+		{ "sort-stats", no_argument, 0, 's' },
+		{ "help", no_argument, 0, 'h' },
+		{ "verbose", no_argument, 0, 'v' },
+		{ "version", no_argument, 0, 'V' },
+		{ 0, 0, 0, 0 }
+	};
+
+	int ch;
+	while (1) {
+		options->option_index = 0;
+		ch = getopt_long(argc, argv, optstring, long_options,
+				 &options->option_index);
+
+		/* Detect the end of the options. */
+		if (ch == -1)
+			break;
+
+		switch (ch) {
+		case 0:
+			break;
+		case 'c':
+			setz_if_positive(&options->characters, atoi(optarg));
+			break;
+		case 'r':
+			setz_if_positive(&options->dice_to_roll, atoi(optarg));
+			break;
+		case 'k':
+			setz_if_positive(&options->dice_to_keep, atoi(optarg));
+			break;
+		case 'n':
+			setz_if_positive(&options->num_stats, atoi(optarg));
+			break;
+		case 'd':
+			setz_if_positive(&options->die_sides, atoi(optarg));
+			break;
+		case 's':
+			options->sort_stats = 1;
+			break;
+		case 'h':
+			options->help = 1;
+			break;
+		case 'v':
+			options->verbose += 1;
+			break;
+		case 'V':
+			options->version = 1;
+			break;
+		}
+	}
+}
+
+#define info(verbose_expr, ...) do { \
+	if (verbose_expr) { \
+		fprintf(stdout, __VA_ARGS__); \
+		fprintf(stdout, "\n"); \
+	} \
+} while (0)
+
 int main(int argc, char **argv)
 {
-	/* the first argument is number of minions, default to 10 */
-	size_t num_minions = 10;
-	if (argc > 1) {
-		int a = atoi(argv[1]);
-		if (a > 0) {
-			num_minions = a;
-		}
+	struct stats_options options;
+
+	options.characters = Default_characters;
+	options.dice_to_roll = Default_dice_to_roll;
+	options.dice_to_keep = Default_dice_to_keep;
+	options.num_stats = Default_num_stats;
+	options.die_sides = Default_die_sides;
+	options.sort_stats = 0;
+	options.verbose = 0;
+	options.help = 0;
+	options.version = 0;
+	options.option_index = 0;
+
+	parse_args_(&options, argc, argv);
+
+	if (options.help) {
+		usage(stdout, argv[0]);
+		return EXIT_SUCCESS;
+	}
+	if (options.version) {
+		fprintf(stdout, "%s %s\n", argv[0], Version_str);
+		return EXIT_SUCCESS;
 	}
 
-	/* second argument is number of dice to roll per stat, default to 3 */
-	size_t num_dice = DICE_TO_USE;
-	if (argc > 2) {
-		int a = atoi(argv[2]);
-		if (a > 0) {
-			num_dice = a;
-		}
-	}
+	size_t num_minions = options.characters;
+	info(options.verbose, "characters: %zu", num_minions);
 
-	/* the third is whether or not to sort the stats high to low */
-	int sort_stats = 0;
-	if (argc > 3) {
-		sort_stats = atoi(argv[3]) ? 1 : 0;
-	}
+	size_t dice_to_roll = options.dice_to_roll;
+	info(options.verbose, "dice to roll: %zu", dice_to_roll);
 
-	/* make space for minions */
+	size_t dice_to_keep = options.dice_to_keep;
+	info(options.verbose, "dice to keep: %zu", dice_to_keep);
+
+	uint16_t die_sides = options.die_sides;
+	info(options.verbose, "sides per die: %zu", (size_t)die_sides);
+
+	size_t num_stats = options.num_stats;
+	info(options.verbose, "num stats: %zu", num_stats);
+
+	int sort_stats = options.sort_stats;
+	info(options.verbose, "sort stats: %s", sort_stats ? "yes" : "no");
+
+	info(options.verbose > 1, "make space for characters");
 	struct charstats *minion_stats = NULL;
 	minion_stats =
 	    (struct charstats *)calloc(num_minions, sizeof(struct charstats));
 	if (!minion_stats) {
 		return EXIT_FAILURE;
 	}
-	size_t stats_size = sizeof(uint16_t) * NUM_STATS;
+	size_t stats_size = sizeof(uint16_t) * num_stats;
 	uint8_t *stats = (uint8_t *)calloc(num_minions, stats_size);
 	if (!stats) {
 		return EXIT_FAILURE;
 	}
 	for (size_t i = 0; i < num_minions; ++i) {
 		minion_stats[i].stats = (uint16_t *)(stats + (i * stats_size));
-		minion_stats[i].stats_len = NUM_STATS;
+		minion_stats[i].stats_len = num_stats;
 	}
 
-	/* make space for the dice */
-	size_t ldice[DICE_TO_USE + 1];
+	size_t ldice[1 + Default_dice_to_roll];
 	size_t *dice = ldice;
-	if (num_dice > sizeof(ldice) / sizeof(ldice[0])) {
-		dice = (size_t *)calloc(num_dice, sizeof(size_t));
+	info(options.verbose > 2, "check space for dice");
+	if (dice_to_roll > sizeof(ldice) / sizeof(ldice[0])) {
+		info(options.verbose > 1, "make space for dice");
+		dice = (size_t *)calloc(dice_to_roll, sizeof(size_t));
 		if (!dice) {
 			return EXIT_FAILURE;
 		}
@@ -266,25 +393,24 @@ int main(int argc, char **argv)
 		memset(ldice, 0x00, sizeof(ldice));
 	}
 
-	/* roll stats for all the minions */
+	info(options.verbose > 1, "roll stats for all the minions");
 	init_rand();
 	for (size_t i = 0; i < num_minions; ++i) {
-		uint16_t die_max_value = DIE_MAX_VALUE;
-		size_t dice_to_use = DICE_TO_USE;
-		roll_stats(&minion_stats[i], dice, num_dice, die_max_value,
-			   dice_to_use, sort_stats);
+		roll_stats(&minion_stats[i], dice, dice_to_roll, die_sides,
+			   dice_to_keep, sort_stats);
 	}
 
-	/* sort the minions from best to worst */
+	info(options.verbose > 1, "sort the minions from best to worst");
 	qsort(minion_stats, num_minions, sizeof(struct charstats),
 	      charstats_cmpdesc);
 
-	/* print each minion */
+	info(options.verbose > 2, "print each minion");
 	char buf[80];
 	for (size_t i = 0; i < num_minions; ++i) {
 		printf("%s\n", charstats_to_string(buf, 80, &minion_stats[i]));
 	}
 
+	info(Make_valgrind_happy && options.verbose > 2, "freeing memory");
 	if (Make_valgrind_happy) {
 		if (dice != ldice) {
 			free(dice);
@@ -296,5 +422,6 @@ int main(int argc, char **argv)
 		minion_stats = NULL;
 	}
 
+	info(options.verbose > 2, "done");
 	return 0;
 }
