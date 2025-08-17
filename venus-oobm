@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ -z "$VERBOSE" ]; then VERBOSE=0; fi
+if [ "$VERBOSE" -gt 0 ]; then
+set -x
+fi
+
+set -e
+
+if ! grep -q infravpn-eric <( wg show interfaces ); then
+	wg-quick up /etc/wireguard/infravpn-eric.conf
+fi
+
+firefox 172.30.30.195
