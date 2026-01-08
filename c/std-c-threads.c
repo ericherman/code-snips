@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later */
-/* std_c_threads.c - example of C threads, atomics, thread_local variables */
+/* std-c-threads.c - example of C threads, atomics, thread_local variables */
 /* Copyright (C) 2020 Eric Herman <eric@freesa.org> */
 /*
    This example reflects some of my understanding of modern C threads,
@@ -7,7 +7,7 @@
    As of this writing, using GCC we still need to explicitly link to
    pthreads, e.g.:
 
-   gcc -o std_c_threads std_c_threads.c -lpthread
+   gcc -o std-c-threads std-c-threads.c -lpthread
 
    My impression so far: the year is 2020 and it looks like glibc with C11
    threads and atomics support is finally available in standard linux dists
