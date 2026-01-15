@@ -1,0 +1,92 @@
+#!/bin/bash
+
+
+if [ $# -lt 2 ]; then
+	echo >&2 "Usage: $0 <file_to_watch> <command> [args...]"
+	echo >&2 "Example: ./watch-and-restart config.txt perl server.pl"
+	exit 1
+fi
+
+FILE_TO_WATCH="$1"
+shift
+COMMAND="$@"
+
+if [ ! -f "$FILE_TO_WATCH" ]; then
+	echo >&2 "Error: File '$FILE_TO_WATCH' does not exist"
+	exit 1
+fi
+
+echo "Watching file: $FILE_TO_WATCH"
+echo "Command: $COMMAND"
+echo "Press Ctrl+C to stop"
+echo ""
+
+
+function kill-and-wait()
+{
+	PID=$1
+	shift
+	WAIT_MAX_SECONDS=$1
+	shift
+	if [ -z "$WAIT_MAX_SECONDS" ]; then
+		WAIT_MAX_SECONDS=1
+	fi
+
+	WAIT_COUNT=$((WAIT_MAX_SECONDS * 10))
+
+	if [ ! -z "$PID" ] && kill -0 $PID 2>/dev/null; then
+		echo "Stopping process $PID..."
+		kill $PID 2>/dev/null
+	fi
+	while [ $WAIT_COUNT -ne 0 ]; do
+		if kill -0 $PID 2>/dev/null; then
+			WAIT_COUNT=$((WAIT_COUNT - 1))
+			sleep 0.1
+		else
+			WAIT_COUNT=0
+		fi
+	done
+	if [ ! -z "$PID" ] && kill -0 $PID 2>/dev/null; then
+		kill -9 $PID 2>/dev/null
+	fi
+}
+
+PID=-1
+function cleanup()
+{
+	kill-and-wait $PID
+}
+trap cleanup EXIT
+
+function get-modification-time()
+{
+	FILE="$1"
+	MOD_TIME=$(stat -c %Y "$FILE" 2>/dev/null \
+		|| stat -f %m "$FILE" 2>/dev/null)
+	echo $MOD_TIME
+}
+
+while true; do
+	$COMMAND &
+	PID=$!
+
+	echo "[$(date '+%Y-%m-%d %H:%M:%S')] Started process with PID: $PID"
+
+	# Watch for file changes using stat to  poll the modification time
+	LAST_MOD=$(get-modification-time "$FILE_TO_WATCH")
+	while true; do
+		sleep 1
+		CURRENT_MOD=$(get-modification-time "$FILE_TO_WATCH")
+		if [ "$CURRENT_MOD" != "$LAST_MOD" ]; then
+			break
+		fi
+	done
+
+	echo "[$(date '+%Y-%m-%d %H:%M:%S')] File changed, restarting..."
+
+	if kill -0 $PID 2>/dev/null; then
+		kill-and-wait $PID 3
+	fi
+
+	sleep 0.3
+done
