@@ -1,34 +1,34 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later */
-/* Copyright (C) 2016-2025 Eric Herman <eric@freesa.org> */
+/* Copyright (C) 2016-2026 Eric Herman <eric@freesa.org> */
 
-#ifndef read_byte
+#ifndef read_byte_stdin
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <unistd.h>
-static int read_byte_posix(void *b)
+static int read_byte_stdin_posix(void *b)
 {
 	return (read(STDIN_FILENO, b, 1) == 1) ? 1 : 0;
 }
 
-#define read_byte(b) read_byte_posix(b)
+#define read_byte_stdin read_byte_stdin_posix
 #endif
 #endif
-#ifndef read_byte
-#error "read_byte() not defined"
+#ifndef read_byte_stdin
+#error "read_byte_stdin not defined"
 #endif
 
-#ifndef write_byte
+#ifndef write_byte_stdout
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <unistd.h>
-static int write_byte_posix(void *b)
+static int write_byte_stdout_posix(void *b)
 {
 	return (write(STDOUT_FILENO, b, 1) == 0) ? 1 : 0;
 }
 
-#define write_byte(b) write_byte_posix(b)
+#define write_byte_stdout write_byte_stdout_posix
 #endif
 #endif
-#ifndef write_byte
-#error "write_byte() not defined"
+#ifndef write_byte_stdout
+#error "write_byte_stdout not defined"
 #endif
 
 static unsigned char hex_to_nibble(char hex)
@@ -79,7 +79,7 @@ static int is_hex(char c)
 	    )? 1 : 0;
 }
 
-int hex_to_bin(void)
+int hex_to_bin(int (*read_byte)(void *b), int (*write_byte)(void *b))
 {
 	int comment = 0;
 	char c = 0;
@@ -115,7 +115,9 @@ int hex_to_bin(void)
 	return have_hi ? 1 : 0;
 }
 
+#ifndef HEX_TO_BIN_LIB
 int main(void)
 {
-	return hex_to_bin();
+	return hex_to_bin(read_byte_stdin, write_byte_stdout);
 }
+#endif
