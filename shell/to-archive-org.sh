@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # to-archive-org.sh : send referenced URLs to the wayback machine
-# Copyright (C) 2020-2025 Eric Herman <eric@freesa.org>
+# Copyright (C) 2020-2026 Eric Herman <eric@freesa.org>
 
 # TODO FIXXXME: use something better than bash
 
@@ -30,13 +30,13 @@ if [ "_${TEST_ENCODED}_" != "_${EXPECTED_ENCODED}_" ]; then
 	exit 1
 fi
 
-if [ "_${ARCHIVER_LOG_FILE}_" == "__" ]; then
+if [ -z "${ARCHIVER_LOG_FILE}" ]; then
 	NOW=$(date --utc +%Y%m%dT%H%M%SZ)
 	ARCHIVER_LOG_FILE=/tmp/to-archive-org.sh.${NOW}.log
 fi
 echo "ARCHIVER_LOG_FILE=$ARCHIVER_LOG_FILE"
 
-if [ "_${ARCHIVER_USER_AGENT}_" == "__" ]; then
+if [ -z "${ARCHIVER_USER_AGENT}" ]; then
 	GIT_USER_NAME=$(git config --get user.name)
 	GIT_USER_EMAIL=$(git config --get user.email)
 	RUN_BY="$GIT_USER_NAME ( $GIT_USER_EMAIL )"
