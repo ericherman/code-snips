@@ -1,27 +1,162 @@
 #!/bin/bash
 # https://xkcd.com/936/
 
-if [ -z "$VERBOSE" ]; then VERBOSE=0; fi
-if [ "$VERBOSE" -gt 1 ]; then set -x; fi
 set -e
 set -o pipefail
 
-if [ -n "$1" ]; then
-	NUM_WORDS=$(( 0 + $1 ))
-else
-	NUM_WORDS=4
+if [ -z "$VERBOSE" ]; then VERBOSE=0; fi
+
+OUR_NAME=$(basename "$0")
+
+VERSION=1.0.0
+
+DEFAULT_NUM_WORDS=3
+
+SEPS='.-_,/+;:'
+
+INVALID_CHARS_RE='[^A-Za-z0-9\-]'
+
+DEFAULT_WORD_LIST_FILE=/usr/share/dict/words
+if ! [ -e $DEFAULT_WORD_LIST_FILE ]; then
+	DEFAULT_WORD_LIST_FILE=$(wc -l \
+		$(realpath /usr/share/dict/* | sort | uniq ) \
+		| grep -v '^[ 0-9]* total$' \
+		| sort -rn | head -n1 | cut -f3 -d' ')
+
 fi
 
-SEP=$( echo '. - _ , / + ; :' | tr ' ' '\n' | shuf | head -n 1 )
-SEP_CNT=8
+function usage() {
+	cat << EOF
+$OUR_NAME version $VERSION
 
-# SHUFFLED=$(shuf /usr/share/dict/american-english)
-CANDIDATE_WORDS=$(grep -v '[^A-Za-z\-]' /usr/share/dict/american-english)
-SHUFFLED=$(shuf <<< "$CANDIDATE_WORDS")
-TOPX=$(head -n$NUM_WORDS <<< "$SHUFFLED")
-ASONE=$(tr '\n' "$SEP" <<< "$TOPX")
-DIGIT=$((RANDOM % 10))
-RESULT="$ASONE$DIGIT"
+	$OUR_NAME produces easier to remember passwords inspired by
+	https://xkcd.com/936/
+
+Usage: $OUR_NAME [OPTION]...
+
+Options:
+	-n, --num-words		default: $DEFAULT_NUM_WORDS
+	-f, --word-list-file	default: $DEFAULT_WORD_LIST_FILE
+	-s, --separator		default: random selection from "$SEPS"
+	-v, --verbose
+	-V, --version		prints '$OUR_NAME version $VERSION' and exits
+	-h, --help		prints this message and exits
+EOF
+}
+
+declare -A ALL_OPTIONS
+ALL_OPTIONS=(
+	["n:"]="num-words:"
+	["f:"]="word-list-file:"
+	["s:"]="separator:"
+	["v"]="verbose"
+	["V"]="version"
+	["h"]="help"
+)
+
+function join-with()
+{
+	local SEP=$1
+	shift
+	local JOINED=$1
+	shift
+	for ELEM in $@; do
+		JOINED="$JOINED$SEP$ELEM"
+	done
+	echo "$JOINED"
+}
+
+SHRT_OPTS=$(join-with '' ${!ALL_OPTIONS[@]} )
+LONG_OPTIONS=$( join-with ',' ${ALL_OPTIONS[@]} )
+
+OPTIONS=$(getopt -o "$SHRT_OPTS" --long "$LONG_OPTIONS" -n "$0" -- "$@")
+
+eval set -- "$OPTIONS"
+unset OPTIONS
+
+while true; do
+	case "$1" in
+		'-n'|'--num-words')
+			NUM_WORDS="$2"
+			shift 2
+			continue
+		;;
+		'-f'|'--word-list-file')
+			WORD_LIST_FILE=$(realpath $2)
+			shift 2
+			continue
+		;;
+		'-s'|'--separator')
+			SEPARATOR="$2"
+			shift 2
+			continue
+		;;
+		'-v'|'--verbose')
+			VERBOSE=$(( VERBOSE + 1 ))
+			shift 1
+			continue
+		;;
+		'-V'|'--version')
+			echo "$OUR_NAME version $VERSION"
+			exit 0
+		;;
+		'-h'|'--help')
+			usage
+			exit 0
+		;;
+		'--')
+			shift
+			break
+		;;
+		*)
+			echo 'Internal error!' >&2
+			exit 1
+		;;
+	esac
+done
+
+if (( $# > 0 )); then
+    echo >&2 "unrecognized parameters: $@"
+    usage
+    exit 1
+fi
+
+if [ "$VERBOSE" -gt 1 ]; then
+	set -x
+fi
+
+if [ -z "$NUM_WORDS" ]; then
+	NUM_WORDS=$DEFAULT_NUM_WORDS
+fi
+
+if [ "$NUM_WORDS" -lt 1 ]; then
+	echo >&2 "NUM_WORDS:$NUM_WORDS"
+	exit 1
+fi
+
+if [ -z "$WORD_LIST_FILE" ]; then
+	WORD_LIST_FILE=$DEFAULT_WORD_LIST_FILE
+fi
+
+if ! [ -e "$WORD_LIST_FILE" ]; then
+	echo >&2 "file not found: $WORD_LIST_FILE"
+	exit 1
+fi
+
+if [ "$VERBOSE" -gt 0 ]; then
+	WORD_CNT=$(grep -v "$INVALID_CHARS_RE" $WORD_LIST_FILE  | wc -l )
+fi
+
+if [ -z "$SEPARATOR" ]; then
+	SEP_IDX=$(( RANDOM % ${#SEPS} ))
+	SEPARATOR=${SEPS:$SEP_IDX:1}
+fi
+
+RESULT=$(join-with "$SEPARATOR" \
+		$( grep -v "$INVALID_CHARS_RE" $WORD_LIST_FILE \
+		| shuf -n "$NUM_WORDS") \
+		$((RANDOM % 10)) \
+	)
 
 # ensure at least one uppercase letter for dumb password constraints
 if ! [[ "$RESULT" =~ [A-Z] ]]; then
@@ -29,10 +164,26 @@ if ! [[ "$RESULT" =~ [A-Z] ]]; then
 fi
 
 if [ "$VERBOSE" -gt 0 ]; then
-	WORD_CNT=$(wc -l <<< "$SHUFFLED")
-	COMBOS=$( bc -l <<< "( $WORD_CNT ^ $NUM_WORDS ) * $SEP_CNT * 10" )
-	BITS=$( bc -l <<< "scale=1; l($COMBOS)/l(2)" )
-	echo "combinations: $COMBOS (bits: $BITS, from $WORD_CNT words)"
+	COMBOS=$( bc -l <<< "( $WORD_CNT ^ $NUM_WORDS ) * ${#SEPS} * 10" )
+	echo "$COMBOS possible"
+	echo "($NUM_WORDS of $WORD_CNT words, 1 of ${#SEPS} symbols, 1 digit)"
+	BITS_UNSCALED=$( bc -l <<< "l($COMBOS)/l(2)" )
+	BITS=$( bc -l <<< "scale=0; $BITS_UNSCALED/1.0" )
+	YEARS=$( bc -l <<< "scale=0; ($COMBOS)/(365.25 * 86400 * 1000)" )
+	case "$YEARS" in
+		'0')
+			MSG='not even 1 year'
+			;; # break
+
+		'1')
+			MSG='>1 year'
+			;; # break
+
+		*) # default
+			MSG=">$YEARS years"
+			;; # break (optional)
+	esac
+	echo "~$BITS bits, $MSG to list at 1000 per second"
 fi
 
 echo "$RESULT"
