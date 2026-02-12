@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Copyright (C) 2025-2026 Eric Herman <eric@freesa.org>
 # https://xkcd.com/936/
 
 set -e
@@ -8,7 +10,7 @@ if [ -z "$VERBOSE" ]; then VERBOSE=0; fi
 
 OUR_NAME=$(basename "$0")
 
-VERSION=1.0.0
+VERSION=1.0.1
 
 DEFAULT_NUM_WORDS=3
 
@@ -149,7 +151,10 @@ fi
 
 if [ -z "$SEPARATOR" ]; then
 	SEP_IDX=$(( RANDOM % ${#SEPS} ))
+	NUM_SEPS=${#SEPS}
 	SEPARATOR=${SEPS:$SEP_IDX:1}
+else
+	NUM_SEPS=1
 fi
 
 RESULT=$(join-with "$SEPARATOR" \
@@ -164,9 +169,14 @@ if ! [[ "$RESULT" =~ [A-Z] ]]; then
 fi
 
 if [ "$VERBOSE" -gt 0 ]; then
-	COMBOS=$( bc -l <<< "( $WORD_CNT ^ $NUM_WORDS ) * ${#SEPS} * 10" )
+	COMBOS=$( bc -l <<< "( $WORD_CNT ^ $NUM_WORDS ) * ${NUM_SEPS} * 10" )
 	echo "$COMBOS possible"
-	echo "($NUM_WORDS of $WORD_CNT words, 1 of ${#SEPS} symbols, 1 digit)"
+	if [ "${NUM_SEPS}" -gt 1 ]; then
+		SEPS_CLAUSE=",1 of ${NUM_SEPS} symbols"
+	else
+		SEPS_CLAUSE=""
+	fi
+	echo "($NUM_WORDS of $WORD_CNT words${SEPS_CLAUSE}, 1 digit)"
 	BITS_UNSCALED=$( bc -l <<< "l($COMBOS)/l(2)" )
 	BITS=$( bc -l <<< "scale=0; $BITS_UNSCALED/1.0" )
 	YEARS=$( bc -l <<< "scale=0; ($COMBOS)/(365.25 * 86400 * 1000)" )
