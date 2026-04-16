@@ -24,10 +24,10 @@ fi
 
 if [ -z "$JOBS" ]; then
 	# not perfect, but hopefully okay
-	JOBS=$(( $(cat /proc/cpuinfo | grep '^processor' | wc -l) ))
-	if [ "$JOBS" -lt 1 ]; then
-		JOBS=1
-	fi
+	JOBS=$(grep -c '^processor' /proc/cpuinfo)
+fi
+if ! [ "$JOBS" -gt 0 ]; then
+	JOBS=1
 fi
 
 if [ -z "$SKIP_MAKE_TEST" ]; then
