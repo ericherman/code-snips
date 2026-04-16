@@ -184,8 +184,21 @@ if ( !$license_boilerpate ) {
 }
 
 foreach my $file (@argscopy) {
+	my $permissions = `stat -c '%a' ${file}`;
+	chomp $permissions;
+	my $ugownership = `stat -c '%u:%g' ${file}`;
+	chomp $ugownership;
+	my $shebang = 0;
+	my $line1 = `head -n1 ${file}`;
+	if ($line1 =~ /^#!\s*\S+/) {
+		$shebang = 1;
+	}
 	system "mv -v $file ${file}.orig";
 	open( my $fh, '>', $file );
+	system "ls -l $file ${file}.orig";
+	if ($shebang) {
+		print $fh $line1;
+	}
 	my $file_basename = `basename $file`;
 	chomp $file_basename;
 	print $fh "/* $file_basename\n";
@@ -193,6 +206,14 @@ foreach my $file (@argscopy) {
 	print $fh $license_boilerpate;
 	print $fh " */\n";
 	close $fh;
-	system "cat ${file}.orig >> $file";
+	if ($shebang) {
+		system "tail -n +2 ${file}.orig >> $file";
+	} else {
+		system "cat ${file}.orig >> $file";
+	}
+	system "chmod -v '$permissions' ${file}";
+	system "chown -v '$ugownership' ${file}";
+	system "diff -u ${file}.orig ${file}";
+	system "rm -v ${file}.orig";
 	system "git diff ${file}";
 }
