@@ -18,7 +18,13 @@ if [ "_${2,,}_" == "_base64_" ]; then
 elif [ "_${2,,}_" == "_posix_" ]; then
 	# https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
 	RANDOM_STRING_CHARS="a-zA-Z0-9\._\-"
-	BASE=63
+	BASE=65
+elif [ "_${2}_" == "_HEX_" ]; then
+	RANDOM_STRING_CHARS="0-9A-F"
+	BASE=16
+elif [ "_${2,,}_" == "_hex_" ]; then
+	RANDOM_STRING_CHARS="0-9a-f"
+	BASE=16
 else
 	RANDOM_STRING_CHARS="a-zA-Z0-9"
 	BASE=62
