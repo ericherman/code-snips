@@ -16,7 +16,7 @@ fi
 AOUT=$(basename --suffix='.c' $1);
 
 #NOISY_FLAGS='-Wall -Wextra -Wpedantic -Werror'
-NOISY_FLAGS='-Wall -Wextra -Wpedantic'
+NOISY_FLAGS='-Wall -Wextra -Wpedantic -Wcast-qual -Wc++-compat'
 
 # -Wl,--gc-sections,--print-gc-sections
 gcc \
