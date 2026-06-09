@@ -25,6 +25,9 @@ elif [ "_${2}_" == "_HEX_" ]; then
 elif [ "_${2,,}_" == "_hex_" ]; then
 	RANDOM_STRING_CHARS="0-9a-f"
 	BASE=16
+elif [ "_${2,,}_" == "_base10_" ]; then
+	RANDOM_STRING_CHARS="0-9"
+	BASE=10
 else
 	RANDOM_STRING_CHARS="a-zA-Z0-9"
 	BASE=62
