@@ -5,12 +5,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 pushd "$REPO_ROOT" >/dev/null
 
 while read -d $'\0' FILE_NAME; do
-	# skip symlinks
-	if [ -L "$FILE_NAME" ]; then
-		continue;
-	fi
-
-	FS_EPOCH=$(date -r "$FILE_NAME" "+%s")
+	FS_EPOCH=$(stat --format=%Y "$FILE_NAME")
 
 	GIT_EPOCH="$(git log -n 1 --pretty='format:%ct' -- "$FILE_NAME")"
 	if [ -z "$GIT_EPOCH" ]; then
