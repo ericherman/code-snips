@@ -1,0 +1,26 @@
+#!/bin/bash
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+pushd "$REPO_ROOT" >/dev/null
+
+while read -d $'\0' FILE_NAME; do
+	# skip symlinks
+	if [ -L "$FILE_NAME" ]; then
+		continue;
+	fi
+
+	FS_EPOCH=$(date -r "$FILE_NAME" "+%s")
+
+	GIT_EPOCH="$(git log -n 1 --pretty='format:%ct' -- "$FILE_NAME")"
+	if [ -z "$GIT_EPOCH" ]; then
+		continue
+	fi
+
+	if [ $FS_EPOCH -ne $GIT_EPOCH ]; then
+		echo "changing $FILE_NAME date from $FS_EPOCH to $GIT_EPOCH"
+		touch --no-dereference --date=@"$GIT_EPOCH" "$FILE_NAME"
+	fi
+done < <(git ls-files -z)
+
+popd >/dev/null
