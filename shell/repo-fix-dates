@@ -1,10 +1,23 @@
 #!/bin/bash
 
+# touch all the files in the repo to match the git modified time
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 pushd "$REPO_ROOT" >/dev/null
 
 while read -d $'\0' FILE_NAME; do
+
+	# skip modified
+	if ! git diff --quiet -- "$FILE_NAME"; then
+		continue
+	fi
+
+	# skip staged
+	if ! git diff --cached --quiet -- "$FILE_NAME"; then
+		continue
+	fi
+
 	FS_EPOCH=$(stat --format=%Y "$FILE_NAME")
 
 	GIT_EPOCH="$(git log -n 1 --pretty='format:%ct' -- "$FILE_NAME")"
@@ -16,6 +29,7 @@ while read -d $'\0' FILE_NAME; do
 		echo "changing $FILE_NAME date from $FS_EPOCH to $GIT_EPOCH"
 		touch --no-dereference --date=@"$GIT_EPOCH" "$FILE_NAME"
 	fi
+
 done < <(git ls-files -z)
 
 popd >/dev/null
