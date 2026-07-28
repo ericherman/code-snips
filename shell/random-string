@@ -28,6 +28,9 @@ elif [ "_${2,,}_" == "_hex_" ]; then
 elif [ "_${2,,}_" == "_base10_" ]; then
 	RANDOM_STRING_CHARS="0-9"
 	BASE=10
+elif [ "_${2,,}_" == "_alpha_" ]; then
+	RANDOM_STRING_CHARS="a-zA-Z"
+	BASE=52
 else
 	RANDOM_STRING_CHARS="a-zA-Z0-9"
 	BASE=62
@@ -35,7 +38,7 @@ fi
 
 if [ -n "${VERBOSE}" ] && [ "${VERBOSE}" -gt 0 ]; then
 	COMBOS=$( bc -l <<<"$BASE ^ $RANDOM_STRING_LENGTH" )
-	BITS=$( bc -l <<<"scale=1; l($COMBOS)/l(2)" )
+	BITS=$( bc -l <<<"l($COMBOS)/l(2)" )
 fi
 
 cat /dev/urandom \

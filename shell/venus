@@ -60,7 +60,7 @@ else
 		| cut -f2 -d'x' \
 		| sort -rn \
 		| head -n1 )
-	if [ $PIXELSX -gt 2000 ]; then
+	if [ $PIXELSX -ge 1600 ]; then
 		echo "screen is large, setting scale to 2x"
 		VNC_SCALE='-scale 2';
 	fi
