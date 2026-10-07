@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# hardware and drivers
+#	lspci -nnk
+#	lsusb
+#	sudo journalctl --no-pager -b 0 -k -g \\
+#		'firmware|iwlwifi|iwlmvm|rtw|rtl|ath|brcm|mt76|wifi|wlan|80211|cfg80211|rfkill'
+
+# for loggin info:
+#	nmcli general logging
+
+# saved wifi profiles
+#	nmcli --fields NAME,UUID,TYPE,DEVICE,AUTOCONNECT connection show
+# or
+#	nmcli connection show --show-secrets
+
+# for more detail:
+#	iw dev
+#	iw phy
+#	nmcli --fields all device show "${WIFI_DEVICE[0]}"
+#	ip -details link show "${WIFI_DEVICE[0]}"
+
+# NetworkManager permissions and connectivity'
+#	nmcli general permissionsnmcli networking connectivity check
+
+# interface addresses and routes
+#
+#	ip -br link
+#	ip -br address
+#	ip route
+#	ip -6 route
+
+# DNS status
+#	resolvectl status
+
+
+# sudo journalctl -b -u NetworkManager
+# journalctl -b | grep -Ei 'wlp3s0|wifi|wlan|80211|firmware|iwlwifi|rtw| ath|brcm|rfkill|NetworkManager'
+# dmesg --ctime | grep -Ei 'wlp3s0|wifi|wlan|firmware|iwlwifi|rtw|ath|brcm|rfkill'
+# journalctl -f -u NetworkManager
+# journalctl -kf
+
+NOW_EPOCH=$(date +%s)
+echo "Epoch:          $NOW_EPOCH"
+date --date="@$NOW_EPOCH" +' %Z: %Y-%m-%d %H:%M:%S %:z'
+date --date="@$NOW_EPOCH" --utc +'  %Z: %Y-%m-%d %H:%M:%S %:z'
+echo
+
+readarray -t WIFI_DEVICES < <(
+	nmcli -t -f DEVICE,TYPE,STATE device status \
+	| awk -F: '$2 == "wifi" { print $1 }')
+
+if [ ${#WIFI_DEVICES[@]} -eq 0 ]
+then
+	echo 'No WiFi devices in NetworkManager?'
+	echo nmcli -t -f DEVICE,TYPE,STATE device status
+	nmcli -t -f DEVICE,TYPE,STATE device status
+else
+	for WIFI_DEVICE in "${WIFI_DEVICES[@]}"; do
+		echo " WIFI: $WIFI_DEVICE"
+	done
+fi
+
+
+set -x
+
+sudo journalctl --no-pager --since "10 minutes ago" -u NetworkManager
+
+sudo journalctl --no-pager --since "10 minutes ago" -k
+
+sudo systemctl --no-pager --full status networking.service
+
+sudo systemctl --no-pager --full status NetworkManager.service
+
+iw dev
+
+nmcli general status
+
+nmcli device status
+
+nmcli radio
+
+nmcli --fields ACTIVE,NAME,DEVICE connection show --active
+
+rfkill list
+
+for WIFI_DEVICE in "${WIFI_DEVICES[@]}"; do
+	ip link show "$WIFI_DEVICE"
+done
+
+cat <<EOF
+#  for list of visible access points:
+	nmcli --fields IN-USE,SSID,BSSID,CHAN,SIGNAL,SECURITY \\
+		device wifi list \\
+		--rescan yes
+
+# if blocked by rfkill:
+
+	sudo rfkill unblock wifi
+	sudo ip link set ${WIFI_DEVICE[0]} up
+
+# to toggle WiFi radio:
+
+	sudo nmcli radio wifi off
+	sudo nmcli radio wifi on
+EOF
