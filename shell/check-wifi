@@ -17,11 +17,10 @@
 # for more detail:
 #	iw dev
 #	iw phy
-#	nmcli --fields all device show "${WIFI_DEVICE[0]}"
-#	ip -details link show "${WIFI_DEVICE[0]}"
-
-# NetworkManager permissions and connectivity'
-#	nmcli general permissionsnmcli networking connectivity check
+#	ip -details link show $WIFI_DEVICE
+#	nmcli --fields all device show $WIFI_DEVICE
+#	nmcli general permissions
+#	nmcli networking connectivity check
 
 # interface addresses and routes
 #
