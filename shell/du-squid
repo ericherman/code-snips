@@ -1,0 +1,5 @@
+#!/bin/bash
+
+CACHE_DIR=$(grep '^cache_dir' /etc/squid/squid.conf | cut -f3 -d' ') \
+
+sudo du -h $CACHE_DIR | sort -nk1h | tail -n1
