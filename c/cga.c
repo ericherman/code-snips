@@ -4,6 +4,7 @@
 /* https://en.wikipedia.org/wiki/Color_Graphics_Adapter */
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -167,7 +168,7 @@ int main(void)
 {
 	printf("num irgb   24-bit    red    green  blue\n");
 	const char *fmt =
-	    "%2zu%c %zu%zu%zu%zu  #%06X    %.2f   %.2f   %.2f    %s\n";
+	    "%2zu%c %zu%zu%zu%zu  #%06" PRIX32 "    %.2f   %.2f   %.2f    %s\n";
 
 	const size_t rgbi_palette_len = 16;
 	for (size_t rgbi = 0; rgbi < rgbi_palette_len; ++rgbi) {
