@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* cga.c : RGBI bit fiddling to CGA 16-color palette */
-/* Copyright (C) 2023 Eric Herman <eric@freesa.org> */
+/* Copyright (C) 2023 - 2026 Eric Herman <eric@freesa.org> */
 /* https://en.wikipedia.org/wiki/Color_Graphics_Adapter */
 
 #include <assert.h>
@@ -9,9 +9,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Note: there are no safety checks if compiled with NDEBUG,
+   rather assert() statements exist primarily to clarify intent,
+   and will be compiled away if speed is required. */
+
 /* Returns an 8-bit value, but only lower 4 bits are used.
    Parameters are the Red, Green, Blue, and "Intensity" bits,
-   corresponding to ~5v or ~0v TTL levels on CGA pins 3, 4, 5, and 6 */
+   corresponding to logical high and low (typically ~5v or ~0v
+   TTL levels) on CGA pins 3, 4, 5, and 6 */
 uint8_t cga_rgbi_bits_to_rgbi4(bool r, bool g, bool b, bool i)
 {
 	uint8_t rbgi4 = 0x00	/* only 4 bits are actually used */
@@ -75,15 +80,24 @@ uint32_t cga_rgbi4_to_rgb24(uint8_t rbgi4, bool dark_yellow_to_brown)
 	return rgb24;
 }
 
-/* Contents of r, g, and b will be set to a value from 0.0 to 1.0;
+/* The input rgb24 must, for each of the three lower bytes, be one of:
+   0x00, 0x55, 0xAA, or 0xFF. The upper byte is expected be zero.
+   Contents of r, g, and b will be set to a value from 0.0 to 1.0;
    possible values are 0.0, 1/3, 2/3, 1.0. */
 void cga_rgb24_to_strength(uint32_t rgb24, double *r, double *g, double *b)
 {
 	assert((0x00FFFFFF & rgb24) == rgb24);
+	assert(r);
+	assert(g);
+	assert(b);
 
 	uint8_t r8 = (0x000000FF & (rgb24 >> (2 * 8)));
 	uint8_t g8 = (0x000000FF & (rgb24 >> (1 * 8)));
 	uint8_t b8 = (0x000000FF & (rgb24 >> (0 * 8)));
+
+	assert(r8 == 0x00 || r8 == 0x55 || r8 == 0xAA || r8 == 0xFF);
+	assert(g8 == 0x00 || g8 == 0x55 || g8 == 0xAA || g8 == 0xFF);
+	assert(b8 == 0x00 || b8 == 0x55 || b8 == 0xAA || b8 == 0xFF);
 
 	assert((r8 & 0x0F) == (r8 >> 4));
 	assert((g8 & 0x0F) == (g8 >> 4));
