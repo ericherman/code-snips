@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -x
+
+cat << EOF
+###########################
+# storage overview
+###########################
+# disks, partitions, filesystems, mount points, and device relationships
+###########################
+EOF
+
+# lsblk -e7 -o NAME,KNAME,TYPE,SIZE,FSTYPE,FSVER,LABEL,UUID,MOUNTPOINTS,PKNAME
+lsblk -e7 -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS
+
+
+cat << EOF
+
+###########################
+# software RAIDs
+###########################
+EOF
+
+cat /proc/mdstat
+
+sudo mdadm --detail --scan
+
+
+WANT_DETAILS_EACH_MD=false
+if $WANT_DETAILS_EACH_MD; then
+	for DEV_MDX in $(ls -1d /dev/md?*); do
+		echo
+		sudo mdadm --detail $DEV_MDX
+	done
+fi
+
+cat << EOF
+
+###########################
+# LVM physical volumes
+###########################
+EOF
+sudo pvs -o pv_name,pv_size,pv_free,vg_name
+
+cat << EOF
+
+###########################
+# LVM volume groups
+###########################
+EOF
+sudo vgs -o vg_name,vg_size,vg_free,pv_count,lv_count
+
+cat << EOF
+
+###########################
+# LVM logical volumes
+###########################
+EOF
+sudo lvs -a -o lv_name,vg_name,lv_size,segtype,devices
+
+WANT_FIND_MOUNT_DETAILS=false
+
+if $WANT_FIND_MOUNT_DETAILS; then
+	cat <<-EOF
+
+	###########################
+	# mounted filesystems
+	###########################
+	EOF
+
+	findmnt -o SOURCE,TARGET,FSTYPE,OPTIONS
+fi
+
+cat << EOF
+
+###########################
+# free space of mounted
+###########################
+EOF
+df --human-readable | head --lines=1 \
+&& df --human-readable \
+	| grep '^/dev' \
+	| sort --key=6
