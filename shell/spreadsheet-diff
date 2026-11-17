@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -x
+
+if (( $# != 2 )); then
+	echo >&2 "Usage: $0 <path-to-excel-file-1> <path-to-excel-file-2>"
+	exit 1
+fi
+if ! command -v ssconvert >/dev/null 2>&1; then
+	echo >&2 '`ssconvert` not in $PATH, is `gnumeric` installed?'
+	exit 1
+fi
+if ! command -v diff >/dev/null 2>&1; then
+	echo >&2 '`diff` not in $PATH, is `diffutils` installed?'
+	exit 1
+fi
+
+excel_file_old="$1"
+excel_file_new="$2"
+
+csv_path_old="/tmp/$(basename "${excel_file_old%.*}").csv"
+csv_path_new="/tmp/$(basename "${excel_file_new%.*}").csv"
+
+ssconvert --export-type=Gnumeric_stf:stf_csv "$excel_file_old" "$csv_path_old"
+
+ssconvert --export-type=Gnumeric_stf:stf_csv "$excel_file_new" "$csv_path_new"
+
+diff -u "$csv_path_old" "$csv_path_new"
